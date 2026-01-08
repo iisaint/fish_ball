@@ -109,24 +109,32 @@ function App() {
 
     const { stats, grandTotalMoney } = calculateGrandTotals();
 
+    // 生成圖片 Canvas（共用函數）
+    const generateCanvas = async () => {
+        if (!printRef.current) return null;
+        
+        // 滾動到預覽區域確保截圖完整
+        document.getElementById('preview-container')?.scrollIntoView({block: "start"});
+        
+        const canvas = await html2canvas(printRef.current, {
+            scale: 2, // 提高解析度
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            windowWidth: 1024, // Fix width context for mobile screenshot
+        });
+        
+        return canvas;
+    };
+
     // 下載圖片
     const downloadImage = async () => {
-        if (!printRef.current) return;
         setIsGenerating(true);
 
-        // 稍微延遲以確保 UI 渲染
         setTimeout(async () => {
             try {
-                // 滾動到預覽區域確保截圖完整
-                document.getElementById('preview-container')?.scrollIntoView({block: "start"});
-                
-                const canvas = await html2canvas(printRef.current, {
-                    scale: 2, // 提高解析度
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    windowWidth: 1024, // Fix width context for mobile screenshot
-                });
+                const canvas = await generateCanvas();
+                if (!canvas) return;
                 
                 const image = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
@@ -137,6 +145,67 @@ function App() {
                 console.error("生成圖片失敗:", err);
                 alert("生成圖片失敗，請重試");
             } finally {
+                setIsGenerating(false);
+            }
+        }, 200);
+    };
+
+    // 分享圖片到 LINE / 社群平台
+    const shareImage = async () => {
+        // 檢查瀏覽器是否支援 Web Share API
+        if (!navigator.share && !navigator.canShare) {
+            alert("您的瀏覽器不支援分享功能，請使用「下載圖片」後手動分享");
+            return;
+        }
+
+        setIsGenerating(true);
+
+        setTimeout(async () => {
+            try {
+                const canvas = await generateCanvas();
+                if (!canvas) return;
+
+                // 將 canvas 轉換為 Blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert("圖片生成失敗，請重試");
+                        setIsGenerating(false);
+                        return;
+                    }
+
+                    const fileName = `丸東魚丸團購單_${leaderInfo.name || '未命名'}_${leaderInfo.date}.png`;
+                    const file = new File([blob], fileName, { type: 'image/png' });
+
+                    // 準備分享資料
+                    const shareData = {
+                        title: '丸東魚丸團購單',
+                        text: `${leaderInfo.name || '團購'}的訂購單 - 總金額 $${grandTotalMoney.toLocaleString()}`,
+                        files: [file]
+                    };
+
+                    // 檢查是否可以分享這些資料
+                    if (navigator.canShare && !navigator.canShare(shareData)) {
+                        alert("無法分享圖片檔案，請使用「下載圖片」功能");
+                        setIsGenerating(false);
+                        return;
+                    }
+
+                    try {
+                        await navigator.share(shareData);
+                        console.log('分享成功！');
+                    } catch (err) {
+                        // 用戶取消分享不算錯誤
+                        if (err.name !== 'AbortError') {
+                            console.error('分享失敗:', err);
+                            alert("分享失敗，請使用「下載圖片」功能");
+                        }
+                    } finally {
+                        setIsGenerating(false);
+                    }
+                }, 'image/png', 0.95);
+            } catch (err) {
+                console.error("生成圖片失敗:", err);
+                alert("生成圖片失敗，請重試");
                 setIsGenerating(false);
             }
         }, 200);
@@ -366,25 +435,45 @@ function App() {
                     </div>
                 </div>
 
-                {/* 下載區 */}
+                {/* 下載/分享區 */}
                 <div className="flex flex-col items-center gap-4 mt-8 mb-12">
+                    {/* 分享按鈕（主要按鈕）*/}
                     <button 
-                        onClick={downloadImage}
+                        onClick={shareImage}
                         disabled={isGenerating}
                         className={`
                             w-full md:w-auto px-10 py-4 rounded-full font-bold text-lg shadow-xl transform transition-all active:scale-95 flex items-center justify-center
-                            ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white'}
+                            ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-green-600 to-emerald-500 text-white hover:from-green-700 hover:to-emerald-600'}
                         `}
                     >
                         {isGenerating ? (
                             <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> 處理中...</>
                         ) : (
-                            <><i className="fa-solid fa-image mr-2"></i> 產生訂購單圖片</>
+                            <><i className="fa-brands fa-line mr-2 text-xl"></i> 分享到 LINE / 社群</>
                         )}
                     </button>
-                    <p className="text-xs text-gray-500 text-center max-w-xs">
-                        點擊後會將下方的預覽內容轉存為 PNG 圖片，方便您傳送至 LINE。
-                    </p>
+                    
+                    {/* 下載按鈕（次要按鈕）*/}
+                    <button 
+                        onClick={downloadImage}
+                        disabled={isGenerating}
+                        className={`
+                            w-full md:w-auto px-8 py-3 rounded-full font-medium text-base shadow-lg transform transition-all active:scale-95 flex items-center justify-center
+                            ${isGenerating ? 'bg-gray-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:from-blue-700 hover:to-cyan-600'}
+                        `}
+                    >
+                        {isGenerating ? (
+                            <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> 處理中...</>
+                        ) : (
+                            <><i className="fa-solid fa-download mr-2"></i> 或下載到手機</>
+                        )}
+                    </button>
+                    
+                    <div className="text-xs text-gray-500 text-center max-w-md space-y-1">
+                        <p className="font-medium">💡 使用說明</p>
+                        <p>• <strong>分享按鈕</strong>：直接傳送到 LINE、WhatsApp、Messenger 等</p>
+                        <p>• <strong>下載按鈕</strong>：儲存到手機相簿後自行傳送</p>
+                    </div>
                 </div>
             </div>
 
