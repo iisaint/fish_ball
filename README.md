@@ -1,236 +1,392 @@
-# 🐟 丸東魚丸團購小幫手
+# 丸東魚丸團購系統 v2.0
 
-一個專為手機設計的團購訂單管理與圖片產生器，支援 PWA 離線使用，可安裝到手機桌面。
+> 多人即時協作 · Firebase Realtime Database · Progressive Web App
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![React](https://img.shields.io/badge/React-18.2-61dafb)
-![Vite](https://img.shields.io/badge/Vite-5.0-646cff)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
 
-## ✨ 功能特色
+## 🎯 專案簡介
 
-- 📱 **手機優先設計** - 完美的觸控體驗，RWD 響應式設計
-- 💾 **自動儲存** - 使用 localStorage 自動保存資料，防止資料遺失
-- 📤 **一鍵分享** - 直接分享到 LINE、WhatsApp 等社群平台
-- 📸 **匯出圖片** - 產生高解析度訂購單圖片，可下載或直接分享
-- 🔄 **即時計算** - 自動計算個人與總金額
-- 📊 **雙重統計** - 提供廠商出貨統計與團員分發明細
-- 🚀 **PWA 支援** - 可安裝到手機桌面，離線也能使用
-- 🔔 **自動更新提示** - 新版本發布時自動通知，一鍵更新（NEW！）
-- ⚡ **極速載入** - Vite 打造，秒開不等待
+這是一個專為「丸東魚丸」設計的團購訂單管理系統，支援**團主、團員、廠商**三種角色，透過 Firebase Realtime Database 實現即時多人協作，讓團購管理更簡單、更即時！
 
-## 🖼️ 預覽
+### ✨ 主要特色
 
-### 手機版介面
-- 卡片式訂單輸入
-- 大按鈕易觸控
-- 左右滑動預覽完整訂購單
-
-### 桌面版介面
-- 表格式訂單管理
-- 一覽所有訂購資訊
+- 🔥 **即時同步** - 使用 Firebase Realtime Database，所有訂單即時更新
+- 👥 **多角色支援** - 團主、團員、廠商各有專屬介面
+- 📲 **一鍵分享** - 團主可直接分享連結給團員填單
+- 👁️ **透明化** - 團員可查看其他人訂購內容，鼓勵跟單
+- 🏪 **廠商後台** - 廠商可查看所有團購、調整價格、管理出貨
+- 📱 **PWA 支援** - 可安裝到手機，離線也能查看
+- 🖼️ **圖片產生** - 自動生成精美訂單圖片，可分享至 LINE
+- 💰 **完全免費** - 使用 Firebase 免費方案，零成本運行
 
 ## 🚀 快速開始
 
 ### 前置需求
 
-- Node.js 16.0 或更新版本
-- npm 或 yarn
+- Node.js 18+ 或 pnpm
+- Firebase 帳號（免費）
+- Vercel 帳號（可選，用於部署）
 
-### 安裝
+### 本地開發
 
-```bash
-# 安裝依賴
-npm install
+1. **Clone 專案**
+   ```bash
+   git clone https://github.com/your-username/fish_ball.git
+   cd fish_ball
+   ```
 
-# 產生 PWA 圖示（首次安裝需要）
-# 1. 在瀏覽器開啟 convert-logo-to-pwa.html（會自動載入丸東 logo）
-# 2. 調整設定並點擊「一鍵下載所有圖示」
-# 3. 建立 public/icons/ 資料夾
-# 4. 將圖示放入該資料夾
-mkdir -p public/icons
-# 然後將下載的圖示檔案移至正確位置
-# mv ~/Downloads/icon-*.png public/icons/
-# mv ~/Downloads/favicon.ico public/
-```
+2. **安裝依賴**
+   ```bash
+   pnpm install
+   ```
 
-### 開發
+3. **設定 Firebase**
+   
+   請參考 [FIREBASE_SETUP.md](./FIREBASE_SETUP.md) 完整設定指南。
+   
+   簡要步驟：
+   - 建立 Firebase 專案
+   - 啟用 Realtime Database
+   - 複製 Firebase 配置
+   - 建立 `.env.local` 並填入配置
 
-```bash
-# 啟動開發伺服器
-npm run dev
+4. **啟動開發伺服器**
+   ```bash
+   pnpm dev
+   ```
 
-# 開啟瀏覽器訪問 http://localhost:5173
-```
+5. **開啟瀏覽器**
+   
+   訪問 `http://localhost:5173`
 
-### 建置
+### 部署到 Vercel
 
-```bash
-# 建置生產版本
-npm run build
+1. **連結 GitHub**
+   
+   將專案推送到 GitHub
 
-# 預覽生產版本
-npm run preview
-```
+2. **匯入到 Vercel**
+   
+   在 Vercel Dashboard 點擊「New Project」並匯入
 
-## 📦 部署到 Vercel
+3. **設定環境變數**
+   
+   在 Vercel 專案設定中新增以下環境變數：
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_DATABASE_URL`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_VENDOR_PASSWORD`
 
-### 方法一：使用 Vercel CLI
+4. **部署**
+   
+   Vercel 會自動建置並部署
 
-```bash
-# 安裝 Vercel CLI（如果還沒安裝）
-npm i -g vercel
+## 📖 使用說明
 
-# 登入 Vercel
-vercel login
+### 角色 1: 團主
 
-# 部署（第一次會詢問專案設定）
-vercel
+1. 開啟首頁，點擊「我要建立團購」
+2. 填寫團主資料（姓名、電話、地點、日期）
+3. 點擊「複製連結」分享給團員
+4. 即時查看團員訂單
+5. 可手動新增/編輯訂單
+6. 產生訂單圖片並分享至 LINE
+7. 關閉團購
 
-# 部署到生產環境
-vercel --prod
-```
+**團主專屬功能：**
+- ✅ 查看所有訂單並即時更新
+- ✅ 手動新增/編輯/刪除團員訂單
+- ✅ 生成並分享精美訂單圖片
+- ✅ 複製團員填單連結
+- ✅ 關閉團購（停止接受新訂單）
 
-### 方法二：使用 GitHub 整合
+### 角色 2: 團員
 
-1. 將專案推送到 GitHub
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin <your-repo-url>
-git push -u origin main
-```
+1. 透過團主分享的連結開啟填單頁面
+2. 輸入姓名
+3. 選擇要訂購的產品與數量
+4. 點擊「送出訂單」
+5. 可隨時修改訂單
+6. 查看其他團員訂購狀況
 
-2. 前往 [Vercel Dashboard](https://vercel.com/dashboard)
-3. 點擊「Import Project」
-4. 選擇你的 GitHub repository
-5. Vercel 會自動偵測 Vite 專案，無需額外設定
-6. 點擊「Deploy」
+**團員專屬功能：**
+- ✅ 簡潔的填單介面
+- ✅ 即時查看其他人訂購內容
+- ✅ 可隨時修改自己的訂單
+- ✅ 自動計算個人總金額
 
-### 方法三：一鍵部署
+### 角色 3: 廠商
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/fish-ball-group-buy)
+1. 開啟首頁，點擊「廠商管理入口」
+2. 輸入廠商密碼（預設：`wan_dong_vendor_2026`）
+3. 查看所有進行中的團購列表
+4. 點擊任一團購查看詳情
+5. 調整產品價格（批發價）
+6. 標記出貨狀態
+7. 新增備註
+8. 列印訂單
+9. 標記為已完成
 
-## 📱 安裝 PWA 到手機
+**廠商專屬功能：**
+- ✅ 查看所有進行中的團購
+- ✅ 調整產品價格（如批發折扣）
+- ✅ 管理出貨狀態（待處理/準備中/已出貨/已送達）
+- ✅ 新增備註（如包裝需求）
+- ✅ 列印訂單清單
+- ✅ 標記團購為已完成
 
-部署完成後，使用手機瀏覽器訪問網站：
+## 🏗️ 系統架構
 
-### iOS (Safari)
-1. 點擊下方「分享」按鈕
-2. 選擇「加入主畫面」
-3. 點擊「加入」
-
-### Android (Chrome)
-1. 點擊右上角選單（三個點）
-2. 選擇「安裝應用程式」或「加到主畫面」
-3. 點擊「安裝」
-
-安裝後，應用程式就會像一般 App 一樣出現在手機桌面！
-
-## 🛠️ 技術架構
+### 技術棧
 
 - **前端框架**: React 18
 - **建置工具**: Vite 5
+- **路由管理**: React Router v6
 - **樣式框架**: Tailwind CSS 3
+- **即時資料庫**: Firebase Realtime Database
+- **圖片生成**: html2canvas
 - **PWA**: vite-plugin-pwa
-- **圖片產生**: html2canvas
-- **圖示字型**: Font Awesome 6
-- **字型**: Google Fonts (Noto Sans TC)
+- **部署平台**: Vercel
 
-## 📂 專案結構
+### 資料結構
+
+```javascript
+{
+  "groups": {
+    "groupId123": {
+      "info": {
+        "name": "王小明",
+        "phone": "0912-345-678",
+        "location": "台北市信義區",
+        "date": "2026-01-15",
+        "createdAt": 1704729600000,
+        "status": "active" // active | closed | completed
+      },
+      "orders": {
+        "orderId456": {
+          "memberName": "張三",
+          "items": {
+            "1": 2,  // 產品ID: 數量
+            "3": 1
+          },
+          "total": 540,
+          "updatedAt": 1704729600000
+        }
+      },
+      "vendorNotes": {
+        "priceAdjustments": {
+          "1": 150  // 產品ID: 調整後價格
+        },
+        "shippingStatus": "preparing",
+        "notes": "請準備冷藏包裝"
+      }
+    }
+  }
+}
+```
+
+### 路由結構
+
+- `/` - 首頁（選擇角色）
+- `/leader/:groupId` - 團主管理介面
+- `/member/:groupId` - 團員填單介面
+- `/vendor` - 廠商管理後台
+- `/vendor/:groupId` - 特定團購詳情
+
+## 🛠️ 開發
+
+### 專案結構
 
 ```
 fish_ball/
-├── public/              # 靜態資源
-│   ├── icons/          # PWA 圖示
-│   ├── icon.svg        # SVG 圖示
-│   └── manifest.json   # PWA manifest
+├── public/
+│   ├── wan_dong_logo.jpg      # 丸東 Logo
+│   └── manifest.json           # PWA Manifest
 ├── src/
-│   ├── App.jsx         # 主應用程式元件
-│   ├── main.jsx        # React 進入點
-│   ├── index.css       # 全域樣式
 │   ├── components/
-│   │   └── UpdatePrompt.jsx     # PWA 更新提示元件
+│   │   └── UpdatePrompt.jsx   # PWA 更新提示
+│   ├── config/
+│   │   └── firebase.js        # Firebase 配置
 │   ├── hooks/
-│   │   └── useLocalStorage.js  # localStorage hook
-│   └── utils/
-│       └── constants.js         # 產品資料與常數
-├── index.html          # HTML 模板
-├── package.json        # 專案依賴
-├── vite.config.js      # Vite 配置
-├── tailwind.config.js  # Tailwind 配置
-├── postcss.config.js   # PostCSS 配置
-└── vercel.json         # Vercel 部署配置
+│   │   ├── useLocalStorage.js # localStorage Hook (保留)
+│   │   └── useFirebaseGroup.js # Firebase Hooks
+│   ├── pages/
+│   │   ├── HomePage.jsx       # 首頁
+│   │   ├── LeaderView.jsx     # 團主視圖
+│   │   ├── MemberView.jsx     # 團員視圖
+│   │   └── VendorView.jsx     # 廠商視圖
+│   ├── utils/
+│   │   ├── constants.js       # 產品資料
+│   │   └── firebase.js        # Firebase 操作函式
+│   ├── App.jsx                # (已棄用，保留供參考)
+│   ├── main.jsx               # 應用程式入口
+│   └── index.css              # 全域樣式
+├── .env.example               # 環境變數範本
+├── .env.local                 # 本地環境變數（不提交）
+├── vite.config.js             # Vite 配置
+├── vercel.json                # Vercel 部署配置
+├── FIREBASE_SETUP.md          # Firebase 設定指南
+└── README.md                  # 本檔案
 ```
 
-## 🎨 自訂產品列表
+### 可用指令
 
-編輯 `src/utils/constants.js` 來修改產品資料：
+```bash
+# 開發
+pnpm dev          # 啟動開發伺服器（支援熱更新）
+
+# 建置
+pnpm build        # 建置生產版本
+
+# 預覽
+pnpm preview      # 預覽生產版本
+```
+
+### 新增產品
+
+編輯 `src/utils/constants.js`:
 
 ```javascript
 export const PRODUCTS = [
-    { id: 1, name: '牛蒡魚餅', price: 160, unit: '斤' },
-    { id: 2, name: '花枝排', price: 180, unit: '斤' },
-    // ... 新增或修改產品
+  { id: 1, name: '牛蒡魚餅', price: 160, unit: '斤' },
+  { id: 2, name: '花枝排', price: 180, unit: '斤' },
+  // 新增更多產品...
 ];
 ```
 
-## 💡 使用技巧
+## 📱 PWA 功能
 
-1. **資料保存**: 所有輸入的資料會自動儲存到瀏覽器，下次開啟會自動恢復
-2. **一鍵分享**: 使用綠色「分享到 LINE / 社群」按鈕，可直接傳送到 LINE 群組或好友
-3. **下載備份**: 藍色「下載到手機」按鈕可儲存圖片到相簿，方便多次使用
-4. **自動更新**: 當有新版本時，會在右下角彈出更新提示，點擊「立即更新」即可
-5. **清空資料**: 清除瀏覽器快取即可重置所有資料
-6. **圖片品質**: 匯出的圖片為 2x 解析度，適合高清顯示
-7. **離線使用**: 安裝 PWA 後，即使沒有網路也能使用（已快取的版本）
+### 安裝到手機
 
-## 🐛 疑難排解
+1. **iOS (Safari)**
+   - 點擊分享按鈕
+   - 選擇「加入主畫面」
 
-### 圖片無法產生
-- 確認瀏覽器支援 html2canvas
-- 檢查是否有封鎖跨來源資源（CORS）
+2. **Android (Chrome)**
+   - 點擊選單（三個點）
+   - 選擇「安裝應用程式」
 
-### PWA 無法安裝
-- 確認網站使用 HTTPS（Vercel 預設啟用）
-- 檢查 manifest.json 是否正確載入
-- 確認圖示檔案存在於 public/icons/
+### 更新機制
 
-### 資料無法儲存
-- 檢查瀏覽器是否允許 localStorage
-- 確認沒有使用無痕模式
+- 應用程式會自動檢查更新
+- 有新版本時會顯示更新提示
+- 點擊「立即更新」即可升級
 
-### PWA 更新後還是顯示舊版本？
-當您部署新版本後，PWA 會自動檢測更新並在右下角顯示更新提示。
+## 🔒 安全性
 
-**正常更新流程**：
-1. 開啟 App 後等待 2-3 秒
-2. 右下角會彈出「🎉 新版本可用！」提示
-3. 點擊「立即更新 ⚡」按鈕
-4. App 自動重新載入並使用最新版本
+### Firebase 安全規則
 
-**如果沒看到更新提示**：
-- **iOS**：關閉 App → 等待 10 秒 → 重新開啟
-- **Android**：下拉重新整理 3-5 次
+目前設定為允許所有人讀寫（適合小型團購）：
 
-**強制重新安裝（最後手段）**：
-- **iOS**：長按圖示 → 移除 App → Safari 重新「加入主畫面」
-- **Android**：長按圖示 → 應用程式資訊 → 清除資料和快取
+```json
+{
+  "rules": {
+    "groups": {
+      "$groupId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
+```
 
-## 📝 授權
+### 廠商密碼
 
-本專案採用 MIT 授權條款
+廠商密碼存放在環境變數中，可隨時更改：
+
+```env
+VITE_VENDOR_PASSWORD=your_secure_password
+```
+
+### 建議
+
+對於更嚴格的安全需求，建議：
+1. 啟用 Firebase Authentication
+2. 設定更細緻的安全規則
+3. 限制資料庫讀寫權限
+
+## 💰 成本分析
+
+### Firebase Spark（免費）方案
+
+- **儲存空間**: 1 GB
+- **下載量**: 10 GB/月
+- **同時連線**: 100 個
+
+### 預估使用量
+
+- 每個團購約 10-50 KB
+- 可支援 **20,000+ 個團購**
+- 每月可支援 **200,000+ 次訪問**
+
+**結論：對於一般團購使用完全免費！**
+
+## 🐛 常見問題
+
+### Q: 顯示「Firebase 尚未配置」
+
+A: 請確認 `.env.local` 是否存在且內容正確，並重新啟動開發伺服器。
+
+### Q: 團員填單後團主沒看到
+
+A: 檢查 Firebase Realtime Database 安全規則是否允許寫入，並確認網路連線正常。
+
+### Q: 如何更改廠商密碼？
+
+A: 修改環境變數 `VITE_VENDOR_PASSWORD`，本地需修改 `.env.local`，Vercel 需在後台修改並重新部署。
+
+### Q: 如何清除舊的團購資料？
+
+A: 可以在 Firebase Console 的 Realtime Database 介面中手動刪除，或設定 Cloud Functions 自動清理（需升級方案）。
+
+### Q: 可以自訂產品嗎？
+
+A: 可以！編輯 `src/utils/constants.js` 中的 `PRODUCTS` 陣列即可。
+
+## 📝 更新日誌
+
+### v2.0.0 (2026-01-08)
+
+- ✨ 新增 Firebase Realtime Database 即時同步
+- ✨ 新增團員填單介面
+- ✨ 新增廠商管理後台
+- ✨ 支援多角色（團主/團員/廠商）
+- ✨ 支援價格動態調整
+- ✨ 支援出貨狀態管理
+- ✨ 新增團員可見其他人訂單功能
+- ✨ 新增一鍵分享填單連結
+- 🎨 全新 UI 設計
+- 📱 優化手機瀏覽體驗
+
+### v1.0.0 (2026-01-07)
+
+- ✨ 基礎團購訂單管理
+- ✨ 訂單圖片生成與分享
+- ✨ PWA 支援
+- ✨ localStorage 本地儲存
 
 ## 🤝 貢獻
 
 歡迎提交 Issue 或 Pull Request！
 
-## 📧 聯絡
+## 📄 授權
 
-如有任何問題或建議，歡迎聯繫。
+MIT License
+
+---
+
+## 🙏 致謝
+
+- [Firebase](https://firebase.google.com/) - 提供免費即時資料庫
+- [Vercel](https://vercel.com/) - 提供免費託管服務
+- [Tailwind CSS](https://tailwindcss.com/) - 優秀的 CSS 框架
+- [html2canvas](https://html2canvas.hertzen.com/) - 圖片生成工具
 
 ---
 
 Made with ❤️ for 丸東魚丸團購
-
