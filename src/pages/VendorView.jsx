@@ -15,6 +15,8 @@ function VendorView() {
     // State
     const [selectedGroupId, setSelectedGroupId] = useState(urlGroupId || null);
     const [allGroups, setAllGroups] = useState([]);
+    const [completedGroups, setCompletedGroups] = useState([]);
+    const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
     const [groupData, setGroupData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [priceAdjustments, setPriceAdjustments] = useState({});
@@ -43,7 +45,7 @@ function VendorView() {
                     
                     console.log('🔍 所有團購資料:', groupsList);
                     
-                    // 只顯示已送單和已確認的團購（不顯示草稿和已完成）
+                    // 分類：進行中的訂單（已送單和已確認，且未完成）
                     const activeGroups = groupsList.filter(g => {
                         const status = g.info?.status;
                         const orderStatus = g.info?.orderStatus;
@@ -58,8 +60,16 @@ function VendorView() {
                                (orderStatus === 'submitted' || orderStatus === 'confirmed');
                     });
                     
-                    console.log('✅ 篩選後的團購:', activeGroups);
+                    // 分類：已完成的訂單
+                    const finishedGroups = groupsList.filter(g => {
+                        return g.info?.status === 'completed';
+                    });
+                    
+                    console.log('✅ 進行中的團購:', activeGroups);
+                    console.log('📦 已完成的團購:', finishedGroups);
+                    
                     setAllGroups(activeGroups.sort((a, b) => (b.info?.createdAt || 0) - (a.info?.createdAt || 0)));
+                    setCompletedGroups(finishedGroups.sort((a, b) => (b.info?.completedAt || b.info?.createdAt || 0) - (a.info?.completedAt || a.info?.createdAt || 0)));
                 } else {
                     console.log('❌ Firebase 沒有資料');
                     setAllGroups([]);
@@ -265,77 +275,193 @@ function VendorView() {
                     {/* 團購列表 */}
                     {!selectedGroupId && (
                         <div className="bg-white rounded-xl shadow-md p-6">
-                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                <i className="fa-solid fa-list mr-2 text-purple-600"></i>
-                                待處理的團購訂單
-                                <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                    {allGroups.length} 筆
-                                </span>
-                            </h2>
+                            {/* 標籤切換 */}
+                            <div className="flex gap-2 mb-6 border-b border-gray-200">
+                                <button
+                                    onClick={() => setActiveTab('active')}
+                                    className={`px-6 py-3 font-bold transition-all ${
+                                        activeTab === 'active'
+                                            ? 'text-purple-600 border-b-2 border-purple-600'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-clock mr-2"></i>
+                                    待處理訂單
+                                    <span className={`ml-2 text-sm font-normal px-2 py-0.5 rounded-full ${
+                                        activeTab === 'active'
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        {allGroups.length}
+                                    </span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('history')}
+                                    className={`px-6 py-3 font-bold transition-all ${
+                                        activeTab === 'history'
+                                            ? 'text-green-600 border-b-2 border-green-600'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-check-circle mr-2"></i>
+                                    歷史記錄
+                                    <span className={`ml-2 text-sm font-normal px-2 py-0.5 rounded-full ${
+                                        activeTab === 'history'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        {completedGroups.length}
+                                    </span>
+                                </button>
+                            </div>
                             
-                            {allGroups.length === 0 ? (
-                                <div className="text-center py-12 text-gray-400">
-                                    <i className="fa-solid fa-inbox text-6xl mb-4"></i>
-                                    <p className="text-lg">目前沒有待處理的訂單</p>
-                                    <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
-                                </div>
-                            ) : (
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {allGroups.map(group => {
-                                        const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
-                                        const totalAmount = group.orders 
-                                            ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
-                                            : 0;
-                                        
-                                        return (
-                                            <div 
-                                                key={group.id}
-                                                onClick={() => setSelectedGroupId(group.id)}
-                                                className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer bg-white"
-                                            >
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div>
-                                                        <h3 className="font-bold text-lg text-gray-800">
-                                                            {group.info?.name || '未命名團購'}
-                                                        </h3>
-                                                        <p className="text-xs text-gray-500">
-                                                            代碼：{group.id}
-                                                        </p>
+                            {/* 待處理訂單列表 */}
+                            {activeTab === 'active' && (
+                                <>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <i className="fa-solid fa-list mr-2 text-purple-600"></i>
+                                        待處理的團購訂單
+                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                            {allGroups.length} 筆
+                                        </span>
+                                    </h2>
+                            
+                                    {allGroups.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <i className="fa-solid fa-inbox text-6xl mb-4"></i>
+                                            <p className="text-lg">目前沒有待處理的訂單</p>
+                                            <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                            {allGroups.map(group => {
+                                                const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
+                                                const totalAmount = group.orders 
+                                                    ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                    : 0;
+                                                
+                                                return (
+                                                    <div 
+                                                        key={group.id}
+                                                        onClick={() => setSelectedGroupId(group.id)}
+                                                        className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer bg-white"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg text-gray-800">
+                                                                    {group.info?.name || '未命名團購'}
+                                                                </h3>
+                                                                <p className="text-xs text-gray-500">
+                                                                    代碼：{group.id}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                                    group.info?.orderStatus === 'submitted' 
+                                                                        ? 'bg-yellow-100 text-yellow-700'
+                                                                        : 'bg-green-100 text-green-700'
+                                                                }`}>
+                                                                    {group.info?.orderStatus === 'submitted' ? '⏳ 待確認' : '✅ 已確認'}
+                                                                </span>
+                                                                {group.info?.status === 'closed' && (
+                                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                                                        已關閉
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="space-y-1 text-sm text-gray-600 mb-3">
+                                                            <p>📅 日期：{group.info?.date || '-'}</p>
+                                                            <p>📍 地點：{group.info?.location || '-'}</p>
+                                                            <p>📞 電話：{group.info?.phone || '-'}</p>
+                                                        </div>
+                                                        
+                                                        <div className="flex justify-between items-center pt-3 border-t">
+                                                            <div className="text-sm text-gray-600">
+                                                                {ordersCount} 筆訂單
+                                                            </div>
+                                                            <div className="text-lg font-bold text-purple-600">
+                                                                ${totalAmount.toLocaleString()}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                            group.info?.orderStatus === 'submitted' 
-                                                                ? 'bg-yellow-100 text-yellow-700'
-                                                                : 'bg-green-100 text-green-700'
-                                                        }`}>
-                                                            {group.info?.orderStatus === 'submitted' ? '⏳ 待確認' : '✅ 已確認'}
-                                                        </span>
-                                                        {group.info?.status === 'closed' && (
-                                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                                                已關閉
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            
+                            {/* 歷史訂單列表 */}
+                            {activeTab === 'history' && (
+                                <>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <i className="fa-solid fa-history mr-2 text-green-600"></i>
+                                        已完成的訂單
+                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                            {completedGroups.length} 筆
+                                        </span>
+                                    </h2>
+                                    
+                                    {completedGroups.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <i className="fa-solid fa-archive text-6xl mb-4"></i>
+                                            <p className="text-lg">目前沒有已完成的訂單</p>
+                                            <p className="text-sm mt-2">完成的訂單會保存在這裡</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                            {completedGroups.map(group => {
+                                                const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
+                                                const totalAmount = group.orders 
+                                                    ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                    : 0;
+                                                const completedDate = group.info?.completedAt 
+                                                    ? new Date(group.info.completedAt).toLocaleDateString('zh-TW')
+                                                    : '-';
+                                                
+                                                return (
+                                                    <div 
+                                                        key={group.id}
+                                                        onClick={() => setSelectedGroupId(group.id)}
+                                                        className="border-2 border-green-200 bg-green-50 rounded-xl p-4 hover:border-green-400 hover:shadow-lg transition-all cursor-pointer"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg text-gray-800">
+                                                                    {group.info?.name || '未命名團購'}
+                                                                </h3>
+                                                                <p className="text-xs text-gray-500">
+                                                                    代碼：{group.id}
+                                                                </p>
+                                                            </div>
+                                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                                                ✅ 已完成
                                                             </span>
-                                                        )}
+                                                        </div>
+                                                        
+                                                        <div className="space-y-1 text-sm text-gray-600 mb-3">
+                                                            <p>📅 結單日期：{group.info?.date || '-'}</p>
+                                                            <p>✅ 完成日期：{completedDate}</p>
+                                                            <p>📍 地點：{group.info?.location || '-'}</p>
+                                                            <p>📞 電話：{group.info?.phone || '-'}</p>
+                                                        </div>
+                                                        
+                                                        <div className="flex justify-between items-center pt-3 border-t border-green-200">
+                                                            <div className="text-sm text-gray-600">
+                                                                {ordersCount} 筆訂單
+                                                            </div>
+                                                            <div className="text-lg font-bold text-green-600">
+                                                                ${totalAmount.toLocaleString()}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                
-                                                <div className="space-y-1 text-sm text-gray-600 mb-3">
-                                                    <p>📅 日期：{group.info?.date || '-'}</p>
-                                                    <p>📍 地點：{group.info?.location || '-'}</p>
-                                                    <p>📞 電話：{group.info?.phone || '-'}</p>
-                                                </div>
-                                                
-                                                <div className="flex justify-between items-center pt-3 border-t">
-                                                    <div className="text-sm text-gray-600">
-                                                        {ordersCount} 筆訂單
-                                                    </div>
-                                                    <div className="text-lg font-bold text-purple-600">
-                                                        ${totalAmount.toLocaleString()}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
@@ -351,6 +477,25 @@ function VendorView() {
                                 <i className="fa-solid fa-arrow-left mr-2"></i>
                                 返回團購列表
                             </button>
+                            
+                            {/* 已完成標籤 */}
+                            {groupData.info?.status === 'completed' && (
+                                <div className="bg-green-100 border-2 border-green-300 rounded-xl p-4 mb-6 print:hidden">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="font-bold text-lg text-green-800 mb-1">
+                                                ✅ 此訂單已完成
+                                            </h3>
+                                            <p className="text-sm text-green-700">
+                                                完成時間：{groupData.info?.completedAt 
+                                                    ? new Date(groupData.info.completedAt).toLocaleString('zh-TW')
+                                                    : '-'}
+                                            </p>
+                                        </div>
+                                        <span className="text-4xl">🎉</span>
+                                    </div>
+                                </div>
+                            )}
                             
                             {/* 團購資訊 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
@@ -377,10 +522,11 @@ function VendorView() {
                             </div>
                             
                             {/* 出貨狀態 */}
-                            <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
-                                <h3 className="font-bold text-lg mb-3 text-gray-800">出貨狀態</h3>
-                                <div className="flex gap-2 flex-wrap">
-                                    {['pending', 'preparing', 'shipped', 'delivered'].map(status => {
+                            {groupData.info?.status !== 'completed' && (
+                                <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
+                                    <h3 className="font-bold text-lg mb-3 text-gray-800">出貨狀態</h3>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {['pending', 'preparing', 'shipped', 'delivered'].map(status => {
                                         const labels = {
                                             pending: '待處理',
                                             preparing: '準備中',
@@ -408,12 +554,20 @@ function VendorView() {
                                             </button>
                                         );
                                     })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             
                             {/* 產品統計與價格調整 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-                                <h3 className="font-bold text-lg mb-4 text-gray-800">產品統計與價格</h3>
+                                <h3 className="font-bold text-lg mb-4 text-gray-800">
+                                    產品統計與價格
+                                    {groupData.info?.status === 'completed' && (
+                                        <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                            唯讀
+                                        </span>
+                                    )}
+                                </h3>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-purple-50">
@@ -423,7 +577,9 @@ function VendorView() {
                                                 <th className="px-4 py-3 text-center">調整價</th>
                                                 <th className="px-4 py-3 text-center">數量</th>
                                                 <th className="px-4 py-3 text-right">小計</th>
-                                                <th className="px-4 py-3 text-center print:hidden">操作</th>
+                                                {groupData.info?.status !== 'completed' && (
+                                                    <th className="px-4 py-3 text-center print:hidden">操作</th>
+                                                )}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -449,14 +605,16 @@ function VendorView() {
                                                         <td className="px-4 py-3 text-right font-bold">
                                                             ${stat.amount.toLocaleString()}
                                                         </td>
-                                                        <td className="px-4 py-3 text-center print:hidden">
-                                                            <button
-                                                                onClick={() => handlePriceAdjust(p.id)}
-                                                                className="text-purple-600 hover:text-purple-700 font-medium text-xs"
-                                                            >
-                                                                調整價格
-                                                            </button>
-                                                        </td>
+                                                        {groupData.info?.status !== 'completed' && (
+                                                            <td className="px-4 py-3 text-center print:hidden">
+                                                                <button
+                                                                    onClick={() => handlePriceAdjust(p.id)}
+                                                                    className="text-purple-600 hover:text-purple-700 font-medium text-xs"
+                                                                >
+                                                                    調整價格
+                                                                </button>
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}
@@ -465,7 +623,9 @@ function VendorView() {
                                                 <td className="px-4 py-3 text-right text-purple-700">
                                                     ${grandTotal.toLocaleString()}
                                                 </td>
-                                                <td className="print:hidden"></td>
+                                                {groupData.info?.status !== 'completed' && (
+                                                    <td className="print:hidden"></td>
+                                                )}
                                             </tr>
                                         </tbody>
                                     </table>
@@ -511,7 +671,7 @@ function VendorView() {
                             </div>
                             
                             {/* 訂單狀態管理 */}
-                            {groupData.info?.orderStatus === 'submitted' && (
+                            {groupData.info?.status !== 'completed' && groupData.info?.orderStatus === 'submitted' && (
                                 <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 mb-6 text-white print:hidden">
                                     <h3 className="font-bold text-xl mb-2">⏳ 待確認收單</h3>
                                     <p className="text-yellow-100 mb-4">團主已送出訂單，請確認後點擊下方按鈕</p>
@@ -524,7 +684,7 @@ function VendorView() {
                                 </div>
                             )}
                             
-                            {groupData.info?.orderStatus === 'confirmed' && (
+                            {groupData.info?.status !== 'completed' && groupData.info?.orderStatus === 'confirmed' && (
                                 <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 mb-6 text-center print:hidden">
                                     <h3 className="font-bold text-lg text-green-800 mb-2">✅ 訂單已確認成立</h3>
                                     <p className="text-sm text-green-700">此訂單已確認收單，請準備出貨</p>
@@ -533,20 +693,30 @@ function VendorView() {
                             
                             {/* 備註 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
-                                <h3 className="font-bold text-lg mb-3 text-gray-800">廠商備註</h3>
+                                <h3 className="font-bold text-lg mb-3 text-gray-800">
+                                    廠商備註
+                                    {groupData.info?.status === 'completed' && (
+                                        <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                            唯讀
+                                        </span>
+                                    )}
+                                </h3>
                                 <textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="輸入備註，例如：需要冷藏包裝、特殊處理事項等..."
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+                                    placeholder={groupData.info?.status === 'completed' ? '無備註' : '輸入備註，例如：需要冷藏包裝、特殊處理事項等...'}
+                                    disabled={groupData.info?.status === 'completed'}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                                     rows="4"
                                 />
-                                <button
-                                    onClick={handleNotesUpdate}
-                                    className="mt-3 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors"
-                                >
-                                    儲存備註
-                                </button>
+                                {groupData.info?.status !== 'completed' && (
+                                    <button
+                                        onClick={handleNotesUpdate}
+                                        className="mt-3 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors"
+                                    >
+                                        儲存備註
+                                    </button>
+                                )}
                             </div>
                             
                             {/* 完成按鈕（只有已確認的訂單才能完成） */}
