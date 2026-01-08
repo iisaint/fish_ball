@@ -39,6 +39,17 @@ function LeaderView() {
         }
     }, [groupInfo]);
     
+    // 記錄到歷史（團主）
+    useEffect(() => {
+        if (groupId && !infoError) {
+            const groups = JSON.parse(localStorage.getItem('leader_groups') || '[]');
+            if (!groups.includes(groupId)) {
+                groups.unshift(groupId);
+                localStorage.setItem('leader_groups', JSON.stringify(groups.slice(0, 10)));
+            }
+        }
+    }, [groupId, infoError]);
+    
     // 將 Firebase 訂單物件轉換為陣列
     const orders = Object.entries(fbOrders || {}).map(([id, data]) => ({
         id,

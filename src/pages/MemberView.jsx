@@ -39,6 +39,17 @@ function MemberView() {
         }
     }, [groupId, fbOrders]);
     
+    // 記錄到歷史（團員）
+    useEffect(() => {
+        if (groupId && !infoError) {
+            const groups = JSON.parse(localStorage.getItem('member_groups') || '[]');
+            if (!groups.includes(groupId)) {
+                groups.unshift(groupId);
+                localStorage.setItem('member_groups', JSON.stringify(groups.slice(0, 10)));
+            }
+        }
+    }, [groupId, infoError]);
+    
     // 計算總金額
     const calculateTotal = () => {
         let total = 0;
