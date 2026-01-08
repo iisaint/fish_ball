@@ -1,0 +1,32 @@
+{
+  "name": "丸東魚丸團購小幫手",
+  "short_name": "丸東魚丸",
+  "description": "團購結單產生器 - 手機版，輕鬆管理團購訂單",
+  "theme_color": "#1e40af",
+  "background_color": "#f0f9ff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖示產生器</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e40af;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            margin: 20px 0;
+            display: block;
+        }
+        button {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1e3a8a;
+        }
+        .info {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐟 丸東魚丸 PWA 圖示產生器</h1>
+        
+        <div class="info">
+            <strong>使用說明：</strong><br>
+            1. 點擊下方按鈕產生並下載圖示<br>
+            2. 將下載的圖示放入 <code>public/icons/</code> 資料夾<br>
+            3. 確保檔案名稱為 <code>icon-192x192.png</code> 和 <code>icon-512x512.png</code>
+        </div>
+
+        <h3>192x192 圖示</h3>
+        <canvas id="canvas192" width="192" height="192"></canvas>
+        <button onclick="downloadIcon(192)">下載 192x192 圖示</button>
+
+        <h3>512x512 圖示</h3>
+        <canvas id="canvas512" width="512" height="512"></canvas>
+        <button onclick="downloadIcon(512)">下載 512x512 圖示</button>
+
+        <h3>Favicon (32x32)</h3>
+        <canvas id="canvas32" width="32" height="32"></canvas>
+        <button onclick="downloadFavicon()">下載 Favicon</button>
+    </div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#1e40af');
+            gradient.addColorStop(1, '#06b6d4');
+            
+            // Rounded rectangle background
+            const radius = size * 0.15;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+            
+            // Fish
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const scale = size / 512;
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(scale, scale);
+            
+            // Fish body
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 120, 70, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fish tail
+            ctx.beginPath();
+            ctx.moveTo(120, 0);
+            ctx.lineTo(180, -40);
+            ctx.lineTo(180, 40);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Fish eye
+            ctx.fillStyle = '#1e40af';
+            ctx.beginPath();
+            ctx.arc(-60, -15, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fish mouth
+            ctx.beginPath();
+            ctx.arc(-90, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fish scales
+            ctx.strokeStyle = 'rgba(30, 64, 175, 0.3)';
+            ctx.lineWidth = 2;
+            [[-20, -10], [20, 5], [60, -5]].forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+            
+            // Top fin
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.beginPath();
+            ctx.moveTo(0, -70);
+            ctx.lineTo(-20, -100);
+            ctx.lineTo(20, -100);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Bottom fin
+            ctx.beginPath();
+            ctx.moveTo(0, 70);
+            ctx.lineTo(-20, 100);
+            ctx.lineTo(20, 100);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+            
+            // Text (only for larger icons)
+            if (size >= 192) {
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${size * 0.09}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('丸東魚丸', centerX, size * 0.82);
+            }
+        }
+        
+        // Draw all icons on load
+        drawIcon(document.getElementById('canvas192'), 192);
+        drawIcon(document.getElementById('canvas512'), 512);
+        drawIcon(document.getElementById('canvas32'), 32);
+        
+        function downloadIcon(size) {
+            const canvas = document.getElementById(`canvas${size}`);
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        function downloadFavicon() {
+            const canvas = document.getElementById('canvas32');
+            const link = document.createElement('a');
+            link.download = 'favicon.ico';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>
+

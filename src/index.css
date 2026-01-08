@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background-color: #f0f9ff;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
+}
+
+/* Custom scrollbar for horizontal table scrolling */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.print-area {
+    background-image: radial-gradient(#e0f2fe 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Mobile optimization: Remove input zoom on iOS */
+input, select, textarea {
+    font-size: 16px !important;
+}
+
+/* Smooth transitions */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+

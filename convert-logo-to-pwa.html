@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo 轉 PWA 圖示工具</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px dashed #cbd5e1;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .preview-section {
+            margin: 30px 0;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .preview-item {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+        .preview-item canvas {
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+            background: white;
+        }
+        .preview-item h3 {
+            margin: 10px 0 5px 0;
+            color: #334155;
+            font-size: 16px;
+        }
+        .preview-item .size-info {
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #1e40af;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #1e3a8a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4);
+        }
+        button:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .download-all {
+            background: #059669;
+            margin-top: 20px;
+            padding: 14px 32px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .download-all:hover {
+            background: #047857;
+        }
+        .info-box {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #1e40af;
+        }
+        .info-box strong {
+            color: #1e40af;
+        }
+        .settings {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+        }
+        .settings label {
+            display: block;
+            margin: 10px 0;
+            color: #92400e;
+        }
+        .settings input[type="color"] {
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .settings input[type="range"] {
+            width: 200px;
+            margin-left: 10px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .upload-btn {
+            background: #3b82f6;
+            font-size: 16px;
+            padding: 12px 32px;
+        }
+        .upload-btn:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐟 丸東魚丸 - Logo 轉 PWA 圖示工具</h1>
+        <p class="subtitle">將您的 logo 快速轉換為 PWA 需要的各種尺寸圖示</p>
+
+        <div class="info-box">
+            <strong>✨ 功能說明：</strong><br>
+            1. 上傳您的 logo 圖片（wan_dong_logo.jpg）<br>
+            2. 調整背景色和邊距<br>
+            3. 預覽所有尺寸的圖示<br>
+            4. 一鍵下載所有圖示到 public/icons/ 資料夾
+        </div>
+
+        <div class="upload-section">
+            <h3>📤 上傳 Logo</h3>
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                選擇圖片檔案
+            </button>
+            <p style="margin-top: 10px; color: #64748b; font-size: 14px;">
+                支援 JPG, PNG, SVG 格式
+            </p>
+        </div>
+
+        <div class="settings" id="settings" style="display: none;">
+            <h3>⚙️ 圖示設定</h3>
+            <label>
+                背景顏色:
+                <input type="color" id="bgColor" value="#ffffff">
+                <button onclick="setBgColor('#ffffff')" style="padding: 4px 8px; font-size: 12px;">白色</button>
+                <button onclick="setBgColor('#1e40af')" style="padding: 4px 8px; font-size: 12px;">藍色</button>
+                <button onclick="setBgColor('#f0f9ff')" style="padding: 4px 8px; font-size: 12px;">淺藍</button>
+            </label>
+            <label>
+                Logo 大小（邊距）: <span id="paddingValue">20</span>%
+                <input type="range" id="padding" min="0" max="40" value="20" 
+                       oninput="document.getElementById('paddingValue').textContent = this.value; generateIcons()">
+            </label>
+            <label>
+                <input type="checkbox" id="rounded" checked onchange="generateIcons()">
+                圓角邊框（PWA 推薦）
+            </label>
+        </div>
+
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <h2>🎨 預覽圖示</h2>
+            <div class="preview-grid">
+                <div class="preview-item">
+                    <h3>App 圖示 (小)</h3>
+                    <div class="size-info">192 x 192 px</div>
+                    <canvas id="canvas192" width="192" height="192"></canvas>
+                    <button onclick="downloadIcon(192)">下載 192x192</button>
+                </div>
+                <div class="preview-item">
+                    <h3>App 圖示 (大)</h3>
+                    <div class="size-info">512 x 512 px</div>
+                    <canvas id="canvas512" width="512" height="512"></canvas>
+                    <button onclick="downloadIcon(512)">下載 512x512</button>
+                </div>
+                <div class="preview-item">
+                    <h3>Favicon</h3>
+                    <div class="size-info">32 x 32 px</div>
+                    <canvas id="canvas32" width="32" height="32"></canvas>
+                    <button onclick="downloadFavicon()">下載 Favicon</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="download-all" onclick="downloadAll()">
+                    📦 一鍵下載所有圖示
+                </button>
+            </div>
+        </div>
+
+        <div class="info-box" id="instructionsBox" style="display: none;">
+            <strong>📁 下載後的步驟：</strong><br>
+            1. 確保已建立資料夾：<code>mkdir -p public/icons</code><br>
+            2. 將下載的圖示移動到正確位置：<br>
+            　 • <code>icon-192x192.png</code> → <code>public/icons/</code><br>
+            　 • <code>icon-512x512.png</code> → <code>public/icons/</code><br>
+            　 • <code>favicon.ico</code> → <code>public/</code><br>
+            3. 完成！執行 <code>npm run build</code> 測試
+        </div>
+    </div>
+
+    <script>
+        let sourceImage = null;
+
+        // Load wan_dong_logo.jpg automatically
+        window.addEventListener('load', () => {
+            // Try to load the logo automatically
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                sourceImage = img;
+                document.getElementById('settings').style.display = 'block';
+                document.getElementById('previewSection').style.display = 'block';
+                document.getElementById('instructionsBox').style.display = 'block';
+                generateIcons();
+            };
+            img.onerror = () => {
+                console.log('Auto-load failed, user will need to upload manually');
+            };
+            img.src = 'wan_dong_logo.jpg';
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    sourceImage = img;
+                    document.getElementById('settings').style.display = 'block';
+                    document.getElementById('previewSection').style.display = 'block';
+                    document.getElementById('instructionsBox').style.display = 'block';
+                    generateIcons();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('bgColor').addEventListener('change', generateIcons);
+
+        function setBgColor(color) {
+            document.getElementById('bgColor').value = color;
+            generateIcons();
+        }
+
+        function generateIcons() {
+            if (!sourceImage) return;
+
+            [32, 192, 512].forEach(size => {
+                const canvas = document.getElementById(`canvas${size}`);
+                const ctx = canvas.getContext('2d');
+                
+                const bgColor = document.getElementById('bgColor').value;
+                const padding = parseInt(document.getElementById('padding').value);
+                const rounded = document.getElementById('rounded').checked;
+
+                // Clear canvas
+                ctx.clearRect(0, 0, size, size);
+
+                // Draw background
+                ctx.fillStyle = bgColor;
+                if (rounded) {
+                    const radius = size * 0.15;
+                    ctx.beginPath();
+                    ctx.roundRect(0, 0, size, size, radius);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(0, 0, size, size);
+                }
+
+                // Calculate logo size with padding
+                const paddingPx = size * (padding / 100);
+                const logoSize = size - (paddingPx * 2);
+
+                // Calculate position to center logo
+                const x = paddingPx;
+                const y = paddingPx;
+
+                // Draw logo (contain fit)
+                const imgAspect = sourceImage.width / sourceImage.height;
+                let drawWidth = logoSize;
+                let drawHeight = logoSize;
+                let drawX = x;
+                let drawY = y;
+
+                if (imgAspect > 1) {
+                    drawHeight = logoSize / imgAspect;
+                    drawY = y + (logoSize - drawHeight) / 2;
+                } else {
+                    drawWidth = logoSize * imgAspect;
+                    drawX = x + (logoSize - drawWidth) / 2;
+                }
+
+                ctx.drawImage(sourceImage, drawX, drawY, drawWidth, drawHeight);
+            });
+        }
+
+        function downloadIcon(size) {
+            const canvas = document.getElementById(`canvas${size}`);
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadFavicon() {
+            const canvas = document.getElementById('canvas32');
+            const link = document.createElement('a');
+            link.download = 'favicon.ico';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAll() {
+            setTimeout(() => downloadIcon(192), 100);
+            setTimeout(() => downloadIcon(512), 300);
+            setTimeout(() => downloadFavicon(), 500);
+            
+            setTimeout(() => {
+                alert('✅ 所有圖示已下載完成！\n\n請將檔案移動到：\n• icon-192x192.png → public/icons/\n• icon-512x512.png → public/icons/\n• favicon.ico → public/');
+            }, 700);
+        }
+    </script>
+</body>
+</html>
+
