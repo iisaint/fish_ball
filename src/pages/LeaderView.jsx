@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { PRODUCTS } from '../utils/constants';
 import { useGroupInfo, useOrders, useVendorNotes } from '../hooks/useFirebaseGroup';
-import { updateGroupInfo, saveOrder, deleteOrder, closeGroup } from '../utils/firebase';
+import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -289,6 +289,35 @@ function LeaderView() {
         });
     };
     
+    // 送單給廠商
+    const handleSubmitToVendor = async () => {
+        if (orders.length === 0) {
+            alert('尚無訂單，無法送單');
+            return;
+        }
+        
+        if (!confirm('確定要將訂單送給廠商嗎？送出後需等待廠商確認。')) return;
+        
+        try {
+            await submitToVendor(groupId);
+            alert('訂單已送出給廠商！');
+        } catch (error) {
+            alert('送單失敗：' + error.message);
+        }
+    };
+    
+    // 取消送單
+    const handleCancelSubmission = async () => {
+        if (!confirm('確定要取消送單嗎？訂單將退回草稿狀態。')) return;
+        
+        try {
+            await cancelSubmission(groupId);
+            alert('已取消送單');
+        } catch (error) {
+            alert('取消失敗：' + error.message);
+        }
+    };
+    
     // 關閉團購
     const handleCloseGroup = async () => {
         if (!confirm('確定要關閉團購嗎？關閉後團員將無法再修改訂單。')) return;
@@ -302,6 +331,7 @@ function LeaderView() {
     };
     
     const isClosed = groupInfo?.status === 'closed' || groupInfo?.status === 'completed';
+    const orderStatus = groupInfo?.orderStatus || 'draft'; // draft, submitted, confirmed
     
     return (
         <>
@@ -329,11 +359,30 @@ function LeaderView() {
                         <p className="text-blue-600 font-medium text-sm md:text-base">
                             團購代碼：<span className="font-mono bg-blue-100 px-3 py-1 rounded">{groupId}</span>
                         </p>
-                        {isClosed && (
-                            <div className="mt-2 inline-block bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold">
-                                ⚠️ 此團購已關閉
-                            </div>
-                        )}
+                        
+                        {/* 訂單狀態提示 */}
+                        <div className="mt-3 flex flex-col items-center gap-2">
+                            {isClosed && (
+                                <div className="inline-block bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold">
+                                    ⚠️ 此團購已關閉
+                                </div>
+                            )}
+                            {orderStatus === 'draft' && !isClosed && (
+                                <div className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium">
+                                    📝 草稿狀態 - 尚未送單給廠商
+                                </div>
+                            )}
+                            {orderStatus === 'submitted' && (
+                                <div className="inline-block bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg font-bold">
+                                    ⏳ 已送單 - 等待廠商確認中
+                                </div>
+                            )}
+                            {orderStatus === 'confirmed' && (
+                                <div className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-lg font-bold">
+                                    ✅ 廠商已確認 - 訂單成立
+                                </div>
+                            )}
+                        </div>
                     </header>
                     
                     {/* 分享團員連結 */}
@@ -560,15 +609,55 @@ function LeaderView() {
                         </button>
                     </div>
                     
-                    {/* 關閉團購按鈕 */}
+                    {/* 訂單管理按鈕 */}
                     {!isClosed && (
-                        <div className="text-center">
-                            <button
-                                onClick={handleCloseGroup}
-                                className="bg-red-100 text-red-700 px-6 py-2 rounded-lg font-medium hover:bg-red-200 transition-colors text-sm"
-                            >
-                                🔒 關閉團購
-                            </button>
+                        <div className="space-y-3">
+                            {/* 送單按鈕 (草稿狀態) */}
+                            {orderStatus === 'draft' && (
+                                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg p-5 text-white text-center">
+                                    <h3 className="font-bold text-lg mb-2">📤 準備送單給廠商</h3>
+                                    <p className="text-sm text-purple-100 mb-4">確認訂單無誤後，點擊下方按鈕送給廠商確認</p>
+                                    <button
+                                        onClick={handleSubmitToVendor}
+                                        disabled={orders.length === 0}
+                                        className="bg-white text-purple-600 px-8 py-3 rounded-lg font-bold shadow-md hover:bg-purple-50 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    >
+                                        {orders.length === 0 ? '尚無訂單' : '送單給廠商'}
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* 已送單狀態 */}
+                            {orderStatus === 'submitted' && (
+                                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 text-center">
+                                    <h3 className="font-bold text-lg text-yellow-800 mb-2">⏳ 等待廠商確認中</h3>
+                                    <p className="text-sm text-yellow-700 mb-4">訂單已送出，請等待廠商確認收單</p>
+                                    <button
+                                        onClick={handleCancelSubmission}
+                                        className="bg-white text-yellow-700 px-6 py-2 rounded-lg font-medium hover:bg-yellow-100 transition-colors text-sm border border-yellow-300"
+                                    >
+                                        取消送單
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* 已確認狀態 */}
+                            {orderStatus === 'confirmed' && (
+                                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 text-center">
+                                    <h3 className="font-bold text-lg text-green-800 mb-2">✅ 廠商已確認收單</h3>
+                                    <p className="text-sm text-green-700">訂單已成立，請等待廠商出貨通知</p>
+                                </div>
+                            )}
+                            
+                            {/* 關閉團購按鈕 */}
+                            <div className="text-center pt-3 border-t">
+                                <button
+                                    onClick={handleCloseGroup}
+                                    className="bg-red-100 text-red-700 px-6 py-2 rounded-lg font-medium hover:bg-red-200 transition-colors text-sm"
+                                >
+                                    🔒 關閉團購
+                                </button>
+                            </div>
                         </div>
                     )}
                     

@@ -1,0 +1,27 @@
+{
+  "rules": {
+    "groups": {
+      "$groupId": {
+        ".read": true,
+        ".write": true,
+        "info": {
+          ".read": true,
+          ".write": true
+        },
+        "orders": {
+          ".read": true,
+          ".write": true,
+          "$orderId": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        "vendorNotes": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    }
+  }
+}
+

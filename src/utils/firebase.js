@@ -16,7 +16,8 @@ export const createGroup = async (leaderInfo) => {
     info: {
       ...leaderInfo,
       createdAt: Date.now(),
-      status: 'active'
+      status: 'active',
+      orderStatus: 'draft' // draft: 草稿, submitted: 已送單, confirmed: 已確認
     },
     orders: {},
     vendorNotes: {
@@ -135,6 +136,43 @@ export const getGroup = async (groupId) => {
   const groupRef = ref(db, `groups/${groupId}`);
   const snapshot = await get(groupRef);
   return snapshot.exists() ? snapshot.val() : null;
+};
+
+/**
+ * 送單給廠商（團主功能）
+ * @param {string} groupId - 團購 ID
+ */
+export const submitToVendor = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'submitted',
+    submittedAt: Date.now()
+  });
+};
+
+/**
+ * 廠商確認收單
+ * @param {string} groupId - 團購 ID
+ */
+export const confirmOrder = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'confirmed',
+    confirmedAt: Date.now()
+  });
+};
+
+/**
+ * 取消送單（退回草稿狀態）
+ * @param {string} groupId - 團購 ID
+ */
+export const cancelSubmission = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'draft',
+    submittedAt: null,
+    confirmedAt: null
+  });
 };
 
 /**

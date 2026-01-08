@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ref, onValue, off } from 'firebase/database';
 import { db } from '../config/firebase';
+import { isFirebaseConfigured } from '../config/firebase';
 import { PRODUCTS } from '../utils/constants';
-import { adjustPrice, updateShippingStatus, updateVendorNotes, completeGroup } from '../utils/firebase';
+import { adjustPrice, updateShippingStatus, updateVendorNotes, completeGroup, confirmOrder } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -22,22 +23,55 @@ function VendorView() {
     
     // 載入所有團購
     useEffect(() => {
-        const groupsRef = ref(db, 'groups');
-        const unsubscribe = onValue(groupsRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                const groupsList = Object.entries(data).map(([id, group]) => ({
-                    id,
-                    ...group
-                }));
-                // 只顯示進行中的團購
-                const activeGroups = groupsList.filter(g => g.info?.status !== 'completed');
-                setAllGroups(activeGroups.sort((a, b) => (b.info?.createdAt || 0) - (a.info?.createdAt || 0)));
-            } else {
-                setAllGroups([]);
-            }
+        // 檢查 Firebase 是否已配置
+        if (!isFirebaseConfigured()) {
             setLoading(false);
-        });
+            return;
+        }
+        
+        const groupsRef = ref(db, 'groups');
+        
+        const unsubscribe = onValue(
+            groupsRef,
+            (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const groupsList = Object.entries(data).map(([id, group]) => ({
+                        id,
+                        ...group
+                    }));
+                    
+                    console.log('🔍 所有團購資料:', groupsList);
+                    
+                    // 只顯示已送單和已確認的團購（不顯示草稿和已完成）
+                    const activeGroups = groupsList.filter(g => {
+                        const status = g.info?.status;
+                        const orderStatus = g.info?.orderStatus;
+                        
+                        console.log(`團購 ${g.id}:`, {
+                            status,
+                            orderStatus,
+                            shouldShow: status !== 'completed' && (orderStatus === 'submitted' || orderStatus === 'confirmed')
+                        });
+                        
+                        return status !== 'completed' && 
+                               (orderStatus === 'submitted' || orderStatus === 'confirmed');
+                    });
+                    
+                    console.log('✅ 篩選後的團購:', activeGroups);
+                    setAllGroups(activeGroups.sort((a, b) => (b.info?.createdAt || 0) - (a.info?.createdAt || 0)));
+                } else {
+                    console.log('❌ Firebase 沒有資料');
+                    setAllGroups([]);
+                }
+                setLoading(false);
+            },
+            (error) => {
+                console.error('❌ 載入團購列表失敗:', error);
+                setAllGroups([]);
+                setLoading(false);
+            }
+        );
         
         return () => off(groupsRef, 'value', unsubscribe);
     }, []);
@@ -138,6 +172,18 @@ function VendorView() {
         }
     };
     
+    // 確認收單
+    const handleConfirmOrder = async () => {
+        if (!confirm('確定要確認收單嗎？確認後訂單將正式成立。')) return;
+        
+        try {
+            await confirmOrder(selectedGroupId);
+            alert('收單確認成功！訂單已成立');
+        } catch (error) {
+            alert('確認失敗：' + error.message);
+        }
+    };
+    
     // 完成團購
     const handleComplete = async () => {
         if (!confirm('確定要標記此團購為「已完成」嗎？完成後將不再顯示在列表中。')) return;
@@ -162,6 +208,30 @@ function VendorView() {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
                     <p className="text-gray-600">載入中...</p>
+                </div>
+            </div>
+        );
+    }
+    
+    // 檢查 Firebase 是否已配置
+    if (!isFirebaseConfigured()) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-white p-4">
+                <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Firebase 未配置</h2>
+                    <p className="text-gray-600 mb-6">
+                        請先設定 Firebase Realtime Database 才能使用廠商功能。
+                    </p>
+                    <p className="text-sm text-gray-500 mb-6">
+                        請參考 FIREBASE_SETUP.md 或 README.md 瞭解如何設定。
+                    </p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors"
+                    >
+                        返回首頁
+                    </button>
                 </div>
             </div>
         );
@@ -197,7 +267,7 @@ function VendorView() {
                         <div className="bg-white rounded-xl shadow-md p-6">
                             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
                                 <i className="fa-solid fa-list mr-2 text-purple-600"></i>
-                                進行中的團購
+                                待處理的團購訂單
                                 <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                                     {allGroups.length} 筆
                                 </span>
@@ -206,7 +276,8 @@ function VendorView() {
                             {allGroups.length === 0 ? (
                                 <div className="text-center py-12 text-gray-400">
                                     <i className="fa-solid fa-inbox text-6xl mb-4"></i>
-                                    <p className="text-lg">目前沒有進行中的團購</p>
+                                    <p className="text-lg">目前沒有待處理的訂單</p>
+                                    <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
                                 </div>
                             ) : (
                                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -231,13 +302,20 @@ function VendorView() {
                                                             代碼：{group.id}
                                                         </p>
                                                     </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                        group.info?.status === 'closed' 
-                                                            ? 'bg-red-100 text-red-700'
-                                                            : 'bg-green-100 text-green-700'
-                                                    }`}>
-                                                        {group.info?.status === 'closed' ? '已關閉' : '進行中'}
-                                                    </span>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                            group.info?.orderStatus === 'submitted' 
+                                                                ? 'bg-yellow-100 text-yellow-700'
+                                                                : 'bg-green-100 text-green-700'
+                                                        }`}>
+                                                            {group.info?.orderStatus === 'submitted' ? '⏳ 待確認' : '✅ 已確認'}
+                                                        </span>
+                                                        {group.info?.status === 'closed' && (
+                                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                                                已關閉
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 
                                                 <div className="space-y-1 text-sm text-gray-600 mb-3">
@@ -432,6 +510,27 @@ function VendorView() {
                                 </div>
                             </div>
                             
+                            {/* 訂單狀態管理 */}
+                            {groupData.info?.orderStatus === 'submitted' && (
+                                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 mb-6 text-white print:hidden">
+                                    <h3 className="font-bold text-xl mb-2">⏳ 待確認收單</h3>
+                                    <p className="text-yellow-100 mb-4">團主已送出訂單，請確認後點擊下方按鈕</p>
+                                    <button
+                                        onClick={handleConfirmOrder}
+                                        className="bg-white text-yellow-600 px-8 py-3 rounded-lg font-bold shadow-md hover:bg-yellow-50 transition-all transform hover:scale-105 text-lg"
+                                    >
+                                        ✅ 確認收單（訂單成立）
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {groupData.info?.orderStatus === 'confirmed' && (
+                                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 mb-6 text-center print:hidden">
+                                    <h3 className="font-bold text-lg text-green-800 mb-2">✅ 訂單已確認成立</h3>
+                                    <p className="text-sm text-green-700">此訂單已確認收單，請準備出貨</p>
+                                </div>
+                            )}
+                            
                             {/* 備註 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
                                 <h3 className="font-bold text-lg mb-3 text-gray-800">廠商備註</h3>
@@ -450,16 +549,18 @@ function VendorView() {
                                 </button>
                             </div>
                             
-                            {/* 完成按鈕 */}
-                            <div className="text-center print:hidden">
-                                <button
-                                    onClick={handleComplete}
-                                    className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
-                                >
-                                    <i className="fa-solid fa-check mr-2"></i>
-                                    標記為已完成
-                                </button>
-                            </div>
+                            {/* 完成按鈕（只有已確認的訂單才能完成） */}
+                            {groupData.info?.orderStatus === 'confirmed' && (
+                                <div className="text-center print:hidden">
+                                    <button
+                                        onClick={handleComplete}
+                                        className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                                    >
+                                        <i className="fa-solid fa-check mr-2"></i>
+                                        標記為已完成
+                                    </button>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

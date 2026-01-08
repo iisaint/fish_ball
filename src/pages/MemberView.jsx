@@ -93,9 +93,14 @@ function MemberView() {
     }
     
     const isClosed = groupInfo?.status === 'closed' || groupInfo?.status === 'completed';
+    const orderStatus = groupInfo?.orderStatus || 'draft';
+    const isLocked = orderStatus !== 'draft' || isClosed;
     
     // 更新數量
     const updateQuantity = (productId, delta) => {
+        // 如果已鎖定，不允許更新
+        if (isLocked) return;
+        
         const currentQty = items[productId] || 0;
         let newQty = currentQty + delta;
         if (newQty < 0) newQty = 0;
@@ -110,6 +115,17 @@ function MemberView() {
     const handleSaveOrder = async () => {
         if (!memberName.trim()) {
             alert('請輸入您的姓名');
+            return;
+        }
+        
+        // 檢查訂單狀態
+        if (orderStatus === 'submitted') {
+            alert('團主已送單給廠商，目前無法修改訂單。\n如需修改請聯絡團主。');
+            return;
+        }
+        
+        if (orderStatus === 'confirmed') {
+            alert('訂單已確認成立，無法再修改。\n如需修改請聯絡團主或廠商。');
             return;
         }
         
@@ -199,6 +215,13 @@ function MemberView() {
                                 ⚠️ 此團購已關閉
                             </div>
                         )}
+                        {!isClosed && orderStatus !== 'draft' && (
+                            <div className="mt-2 inline-block bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-bold text-sm">
+                                🔒 訂單已鎖定 - 
+                                {orderStatus === 'submitted' && ' 等待廠商確認'}
+                                {orderStatus === 'confirmed' && ' 訂單已確認'}
+                            </div>
+                        )}
                     </header>
                     
                     {/* 成功提示 */}
@@ -215,14 +238,15 @@ function MemberView() {
                     <div className="bg-white rounded-xl shadow-md p-5 mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             您的姓名 <span className="text-red-500">*</span>
+                            {isLocked && <span className="ml-2 text-xs text-yellow-600">🔒 已鎖定</span>}
                         </label>
                         <input
                             type="text"
                             value={memberName}
                             onChange={(e) => setMemberName(e.target.value)}
                             placeholder="請輸入您的姓名"
-                            disabled={isClosed}
-                            className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50"
+                            disabled={isLocked}
+                            className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                     </div>
                     
@@ -231,6 +255,11 @@ function MemberView() {
                         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                             <i className="fa-solid fa-shopping-cart mr-2 text-blue-600"></i>
                             選擇產品
+                            {isLocked && (
+                                <span className="ml-auto text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium">
+                                    🔒 已鎖定
+                                </span>
+                            )}
                         </h2>
                         
                         <div className="space-y-4">
@@ -245,9 +274,11 @@ function MemberView() {
                                     <div 
                                         key={p.id} 
                                         className={`border-2 rounded-xl p-4 transition-all ${
-                                            isActive 
-                                                ? 'border-blue-400 bg-blue-50 shadow-md' 
-                                                : 'border-gray-200 bg-white'
+                                            isLocked 
+                                                ? 'border-gray-200 bg-gray-50 opacity-75' 
+                                                : isActive 
+                                                    ? 'border-blue-400 bg-blue-50 shadow-md' 
+                                                    : 'border-gray-200 bg-white'
                                         }`}
                                     >
                                         <div className="flex justify-between items-start mb-3">
@@ -285,24 +316,32 @@ function MemberView() {
                                         <div className="flex items-center justify-center gap-4">
                                             <button 
                                                 onClick={() => updateQuantity(p.id, -1)} 
-                                                disabled={isClosed}
-                                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all disabled:opacity-50 ${
-                                                    qty > 0 
-                                                        ? 'bg-white border-2 border-blue-400 text-blue-600 shadow-md hover:bg-blue-50 active:scale-95' 
-                                                        : 'bg-gray-100 text-gray-400'
+                                                disabled={isLocked}
+                                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all ${
+                                                    isLocked 
+                                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                        : qty > 0 
+                                                            ? 'bg-white border-2 border-blue-400 text-blue-600 shadow-md hover:bg-blue-50 active:scale-95' 
+                                                            : 'bg-gray-100 text-gray-400'
                                                 }`}
                                             >
                                                 <i className="fa-solid fa-minus"></i>
                                             </button>
                                             
-                                            <div className={`text-3xl font-bold w-16 text-center ${isActive ? 'text-blue-600' : 'text-gray-300'}`}>
+                                            <div className={`text-3xl font-bold w-16 text-center ${
+                                                isLocked ? 'text-gray-400' : isActive ? 'text-blue-600' : 'text-gray-300'
+                                            }`}>
                                                 {qty}
                                             </div>
                                             
                                             <button 
                                                 onClick={() => updateQuantity(p.id, 1)}
-                                                disabled={isClosed} 
-                                                className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-lg shadow-lg hover:bg-blue-600 active:scale-95 transition-all disabled:opacity-50"
+                                                disabled={isLocked} 
+                                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg shadow-lg transition-all ${
+                                                    isLocked
+                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                        : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
+                                                }`}
                                             >
                                                 <i className="fa-solid fa-plus"></i>
                                             </button>
@@ -314,22 +353,57 @@ function MemberView() {
                     </div>
                     
                     {/* 總計與儲存 */}
-                    <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 mb-6 text-white sticky bottom-20 md:bottom-6">
+                    <div className={`rounded-xl shadow-lg p-6 mb-6 text-white sticky bottom-20 md:bottom-6 ${
+                        orderStatus === 'draft' 
+                            ? 'bg-gradient-to-r from-orange-500 to-orange-600'
+                            : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                    }`}>
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <div className="text-sm opacity-90">您的訂購金額</div>
                                 <div className="text-4xl font-bold">${total.toLocaleString()}</div>
                             </div>
-                            <button
-                                onClick={handleSaveOrder}
-                                disabled={isSaving || isClosed}
-                                className="bg-white text-orange-600 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-orange-50 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSaving ? '儲存中...' : myOrderId ? '💾 更新訂單' : '✓ 送出訂單'}
-                            </button>
+                            
+                            {orderStatus === 'draft' ? (
+                                <button
+                                    onClick={handleSaveOrder}
+                                    disabled={isSaving || isClosed}
+                                    className="bg-white text-orange-600 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-orange-50 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSaving ? '儲存中...' : myOrderId ? '💾 更新訂單' : '✓ 送出訂單'}
+                                </button>
+                            ) : (
+                                <div className="text-center">
+                                    <div className="bg-white bg-opacity-20 px-6 py-3 rounded-xl">
+                                        <div className="text-sm font-medium mb-1">🔒 訂單已鎖定</div>
+                                        <div className="text-xs opacity-90">
+                                            {orderStatus === 'submitted' && '已送單給廠商'}
+                                            {orderStatus === 'confirmed' && '訂單已確認成立'}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
-                        {myOrderId && !isSaving && (
+                        {/* 狀態提示 */}
+                        {orderStatus !== 'draft' && (
+                            <div className="text-xs opacity-90 text-center mt-3 bg-white bg-opacity-10 px-4 py-2 rounded-lg">
+                                {orderStatus === 'submitted' && (
+                                    <>
+                                        <i className="fa-solid fa-lock mr-1"></i>
+                                        團主已送單，等待廠商確認中。如需修改請聯絡團主。
+                                    </>
+                                )}
+                                {orderStatus === 'confirmed' && (
+                                    <>
+                                        <i className="fa-solid fa-check-circle mr-1"></i>
+                                        訂單已確認成立。如需修改請聯絡團主或廠商。
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        
+                        {myOrderId && orderStatus === 'draft' && !isSaving && (
                             <div className="text-xs opacity-90 text-center">
                                 <i className="fa-solid fa-info-circle mr-1"></i>
                                 您的訂單已儲存，可隨時修改
@@ -382,8 +456,17 @@ function MemberView() {
                     
                     {/* Footer */}
                     <div className="mt-8 text-center text-xs text-gray-500">
-                        <p>💡 訂單會即時同步給團主</p>
-                        <p className="mt-1">可隨時回到此頁面修改訂單</p>
+                        {orderStatus === 'draft' ? (
+                            <>
+                                <p>💡 訂單會即時同步給團主</p>
+                                <p className="mt-1">可隨時回到此頁面修改訂單</p>
+                            </>
+                        ) : (
+                            <>
+                                <p>🔒 訂單已鎖定，無法修改</p>
+                                <p className="mt-1">如需修改請聯絡團主</p>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
