@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      registerType: 'prompt',  // 改為 prompt，由用戶決定是否更新
+      includeAssets: ['favicon.ico', 'icons/*.png', 'wan_dong_logo.jpg'],
       manifest: {
         name: '丸東魚丸團購小幫手',
         short_name: '丸東魚丸',
@@ -34,7 +34,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}'],
+        cleanupOutdatedCaches: true,  // 自動清理舊快取
+        clientsClaim: true,            // 立即控制頁面
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -65,6 +67,9 @@ export default defineConfig({
             }
           }
         ]
+      },
+      devOptions: {
+        enabled: true  // 開發時也啟用 PWA，方便測試
       }
     })
   ]

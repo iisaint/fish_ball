@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { PRODUCTS, STORAGE_KEYS } from './utils/constants';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import UpdatePrompt from './components/UpdatePrompt';
 
 function App() {
     // 團主資訊 State with localStorage
@@ -212,7 +213,9 @@ function App() {
     };
 
     return (
-        <div className="min-h-screen pb-20">
+        <>
+            <UpdatePrompt />
+            <div className="min-h-screen pb-20">
             {/* 控制面板 / 輸入區 */}
             <div className="max-w-6xl mx-auto p-4 md:p-6">
                 <header className="mb-6 text-center">
@@ -609,7 +612,7 @@ function App() {
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
 
