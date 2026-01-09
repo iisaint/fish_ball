@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { PRODUCTS } from '../utils/constants';
 import { useGroupInfo, useOrders, useVendorNotes } from '../hooks/useFirebaseGroup';
-import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission, verifyLeaderToken } from '../utils/firebase';
+import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission, verifyLeaderToken, updateLeaderNotes } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -28,6 +28,7 @@ function LeaderView() {
         location: '',
         date: new Date().toISOString().split('T')[0]
     });
+    const [leaderNotes, setLeaderNotes] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [showShareLink, setShowShareLink] = useState(false);
     
@@ -81,6 +82,7 @@ function LeaderView() {
                 location: groupInfo.location || '',
                 date: groupInfo.date || new Date().toISOString().split('T')[0]
             });
+            setLeaderNotes(groupInfo.leaderNotes || '');
         }
     }, [groupInfo]);
     
@@ -200,6 +202,18 @@ function LeaderView() {
         clearTimeout(window.leaderUpdateTimeout);
         window.leaderUpdateTimeout = setTimeout(() => {
             updateGroupInfo(groupId, { [name]: value });
+        }, 500);
+    };
+    
+    // 更新團主備註
+    const handleLeaderNotesChange = (e) => {
+        const value = e.target.value;
+        setLeaderNotes(value);
+        
+        // Debounce 寫入 Firebase
+        clearTimeout(window.leaderNotesTimeout);
+        window.leaderNotesTimeout = setTimeout(() => {
+            updateLeaderNotes(groupId, value);
         }, 500);
     };
     
@@ -566,6 +580,27 @@ function LeaderView() {
                                 />
                             </div>
                         </div>
+                    </div>
+                    
+                    {/* 團主備註 */}
+                    <div className="bg-white rounded-xl shadow-md p-5 mb-6 border border-blue-100">
+                        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                            <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">
+                                <i className="fa-solid fa-note-sticky text-xs"></i>
+                            </span>
+                            給廠商的備註
+                        </h2>
+                        <textarea
+                            value={leaderNotes}
+                            onChange={handleLeaderNotesChange}
+                            placeholder="例如：請提早出貨、有特殊需求等..."
+                            rows={3}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all resize-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            <i className="fa-solid fa-info-circle mr-1"></i>
+                            此備註會同步顯示在廠商管理介面
+                        </p>
                     </div>
                     
                     {/* 2. 團員訂購區 */}

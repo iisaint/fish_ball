@@ -17,6 +17,7 @@ export const createGroup = async (leaderInfo) => {
     info: {
       ...leaderInfo,
       leaderToken: leaderToken, // 存儲團主 Token
+      leaderNotes: '', // 團主給廠商的備註
       createdAt: Date.now(),
       status: 'active',
       orderStatus: 'draft' // draft: 草稿, submitted: 已送單, confirmed: 已確認
@@ -126,6 +127,16 @@ export const updateShippingStatus = async (groupId, status) => {
  */
 export const updateVendorNotes = async (groupId, notes) => {
   const notesRef = ref(db, `groups/${groupId}/vendorNotes/notes`);
+  await set(notesRef, notes);
+};
+
+/**
+ * 更新團主備註
+ * @param {string} groupId - 團購 ID
+ * @param {string} notes - 備註內容
+ */
+export const updateLeaderNotes = async (groupId, notes) => {
+  const notesRef = ref(db, `groups/${groupId}/info/leaderNotes`);
   await set(notesRef, notes);
 };
 

@@ -512,7 +512,7 @@ function VendorView() {
                             {/* 團購資訊 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div>
+                                    <div className="flex-1">
                                         <h2 className="text-2xl font-bold text-gray-800 mb-2">
                                             {groupData.info?.name || '未命名團購'}
                                         </h2>
@@ -522,10 +522,23 @@ function VendorView() {
                                             <p>📞 聯絡電話：{groupData.info?.phone || '未設定'}</p>
                                             <p>🔑 團購代碼：<span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{selectedGroupId}</span></p>
                                         </div>
+                                        
+                                        {/* 團主備註 */}
+                                        {groupData.info?.leaderNotes && (
+                                            <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
+                                                <div className="flex items-start">
+                                                    <i className="fa-solid fa-comment-dots text-blue-600 mt-0.5 mr-2"></i>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold text-blue-800 mb-1">團主備註</p>
+                                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{groupData.info.leaderNotes}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         onClick={handlePrint}
-                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors print:hidden"
+                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors print:hidden ml-4 flex-shrink-0"
                                     >
                                         <i className="fa-solid fa-print mr-2"></i>
                                         列印
