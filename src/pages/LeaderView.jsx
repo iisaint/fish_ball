@@ -32,6 +32,16 @@ function LeaderView() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showShareLink, setShowShareLink] = useState(false);
     
+    // 折疊狀態管理（使用 localStorage 持久化）
+    const [collapsedOrders, setCollapsedOrders] = useState(() => {
+        try {
+            const saved = localStorage.getItem(`collapsed_orders_${groupId}`);
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    
     // 自動驗證團主 Token
     useEffect(() => {
         const autoVerify = async () => {
@@ -217,17 +227,32 @@ function LeaderView() {
         }, 500);
     };
     
+    // 切換折疊狀態
+    const toggleCollapse = (orderId) => {
+        const newCollapsedState = {
+            ...collapsedOrders,
+            [orderId]: !collapsedOrders[orderId]
+        };
+        setCollapsedOrders(newCollapsedState);
+        localStorage.setItem(`collapsed_orders_${groupId}`, JSON.stringify(newCollapsedState));
+    };
+    
     // 新增團員
     const addMember = async () => {
-        await saveOrder(groupId, null, {
+        const newOrder = await saveOrder(groupId, null, {
             memberName: `團員 ${orders.length + 1}`,
             items: {},
             total: 0
         });
         
+        // 等待 DOM 更新後滾動到新團員卡片
         setTimeout(() => {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }, 100);
+            const memberCards = document.querySelectorAll('[data-member-card]');
+            if (memberCards.length > 0) {
+                const lastCard = memberCards[memberCards.length - 1];
+                lastCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 300);
     };
     
     // 刪除團員
@@ -635,33 +660,67 @@ function LeaderView() {
                         ) : (
                             /* Mobile Card View */
                             <div className="space-y-6">
-                                {orders.map((order, index) => (
-                                    <div key={order.id} className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
-                                        <div className="flex justify-between items-center mb-4 bg-gray-50 -m-4 p-4 rounded-t-xl border-b">
-                                            <div className="flex items-center flex-1">
-                                                <span className="text-gray-400 font-bold mr-2">#{index + 1}</span>
-                                                <input 
-                                                    type="text"
-                                                    value={order.memberName || ''}
-                                                    onChange={(e) => updateMemberName(order.id, e.target.value)}
-                                                    disabled={isLocked}
-                                                    className="font-bold text-lg bg-transparent border-b border-gray-300 focus:border-blue-500 w-full focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                                                    placeholder="輸入姓名"
-                                                />
+                                {orders.map((order, index) => {
+                                    const isCollapsed = collapsedOrders[order.id];
+                                    const isLeaderAdded = order.memberName?.startsWith('團員');
+                                    
+                                    return (
+                                        <div 
+                                            key={order.id} 
+                                            data-member-card
+                                            className={`border-2 rounded-xl p-4 shadow-sm transition-all ${
+                                                isLeaderAdded 
+                                                    ? 'bg-gradient-to-br from-green-50 to-white border-green-300' 
+                                                    : 'bg-white border-gray-200'
+                                            }`}
+                                        >
+                                            <div className={`flex justify-between items-center mb-4 -m-4 p-4 rounded-t-xl border-b ${
+                                                isLeaderAdded ? 'bg-green-50' : 'bg-gray-50'
+                                            }`}>
+                                                {/* 折疊按鈕 */}
+                                                <button
+                                                    onClick={() => toggleCollapse(order.id)}
+                                                    className="w-8 h-8 rounded-full bg-white border hover:bg-gray-100 transition-all flex items-center justify-center mr-2"
+                                                >
+                                                    <i className={`fa-solid ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-xs text-gray-600`}></i>
+                                                </button>
+                                                
+                                                <div className="flex items-center flex-1">
+                                                    <div className="flex items-center mr-2">
+                                                        <span className={`font-bold mr-2 ${isLeaderAdded ? 'text-green-600' : 'text-gray-400'}`}>
+                                                            #{index + 1}
+                                                        </span>
+                                                        {isLeaderAdded && (
+                                                            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold mr-2">
+                                                                團長新增
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <input 
+                                                        type="text"
+                                                        value={order.memberName || ''}
+                                                        onChange={(e) => updateMemberName(order.id, e.target.value)}
+                                                        disabled={isLocked}
+                                                        className={`font-bold text-lg bg-transparent border-b focus:border-blue-500 w-full focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                            isLeaderAdded ? 'border-green-300' : 'border-gray-300'
+                                                        }`}
+                                                        placeholder="輸入姓名"
+                                                    />
+                                                </div>
+                                                <div className="text-right mr-3">
+                                                    <div className="text-red-600 font-bold text-lg">${order.total || 0}</div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => removeMember(order.id)}
+                                                    disabled={isLocked} 
+                                                    className="w-8 h-8 rounded-full bg-white text-gray-400 border hover:text-red-500 hover:border-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <i className="fa-solid fa-trash text-sm"></i>
+                                                </button>
                                             </div>
-                                            <div className="text-right mr-3">
-                                                <div className="text-red-600 font-bold text-lg">${order.total || 0}</div>
-                                            </div>
-                                            <button 
-                                                onClick={() => removeMember(order.id)}
-                                                disabled={isLocked} 
-                                                className="w-8 h-8 rounded-full bg-white text-gray-400 border hover:text-red-500 hover:border-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                <i className="fa-solid fa-trash text-sm"></i>
-                                            </button>
-                                        </div>
-                                        
-                                        <div className="space-y-3 mt-2">
+                                            
+                                            {!isCollapsed && (
+                                                <div className="space-y-3 mt-2">
                                             {PRODUCTS.map(p => {
                                                 const qty = order.items?.[p.id] || 0;
                                                 const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments);
@@ -708,9 +767,11 @@ function LeaderView() {
                                                     </div>
                                                 );
                                             })}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
