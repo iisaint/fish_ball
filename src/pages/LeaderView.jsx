@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { PRODUCTS } from '../utils/constants';
 import { useGroupInfo, useOrders, useVendorNotes } from '../hooks/useFirebaseGroup';
-import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission } from '../utils/firebase';
+import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission, verifyLeaderToken } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -11,6 +11,10 @@ function LeaderView() {
     const { groupId } = useParams();
     const navigate = useNavigate();
     const printRef = useRef(null);
+    
+    // 驗證狀態
+    const [isVerifying, setIsVerifying] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     
     // Firebase hooks
     const { groupInfo, loading: infoLoading, error: infoError } = useGroupInfo(groupId);
@@ -26,6 +30,47 @@ function LeaderView() {
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [showShareLink, setShowShareLink] = useState(false);
+    
+    // 自動驗證團主 Token
+    useEffect(() => {
+        const autoVerify = async () => {
+            if (!groupId) {
+                setIsVerifying(false);
+                return;
+            }
+            
+            // 從 localStorage 讀取 Token
+            const storedToken = localStorage.getItem(`leader_token_${groupId}`);
+            
+            if (!storedToken) {
+                // 沒有 Token，拒絕訪問
+                setIsAuthenticated(false);
+                setIsVerifying(false);
+                return;
+            }
+            
+            try {
+                // 驗證 Token
+                const isValid = await verifyLeaderToken(groupId, storedToken);
+                
+                if (isValid) {
+                    setIsAuthenticated(true);
+                } else {
+                    // Token 無效，可能被篡改
+                    setIsAuthenticated(false);
+                    // 清除無效 Token
+                    localStorage.removeItem(`leader_token_${groupId}`);
+                }
+            } catch (error) {
+                console.error('驗證失敗:', error);
+                setIsAuthenticated(false);
+            } finally {
+                setIsVerifying(false);
+            }
+        };
+        
+        autoVerify();
+    }, [groupId]);
     
     // 同步 Firebase 資料到本地 state
     useEffect(() => {
@@ -56,15 +101,74 @@ function LeaderView() {
         ...data
     }));
     
+    // 驗證中
+    if (isVerifying) {
+        return (
+            <>
+                <UpdatePrompt />
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-white">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">驗證中...</p>
+                    </div>
+                </div>
+            </>
+        );
+    }
+    
+    // 驗證失敗
+    if (!isAuthenticated) {
+        return (
+            <>
+                <UpdatePrompt />
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-white p-4">
+                    <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+                        <div className="text-6xl mb-4">🔒</div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">無權訪問</h2>
+                        <p className="text-gray-600 mb-6">
+                            您沒有權限訪問此團購的團主介面。
+                        </p>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                            <p className="text-sm text-blue-800 mb-2">
+                                <i className="fa-solid fa-info-circle mr-2"></i>
+                                <strong>如何訪問？</strong>
+                            </p>
+                            <ul className="text-xs text-blue-700 space-y-1 ml-6 list-disc">
+                                <li>從首頁「我建立的團購」歷史記錄進入</li>
+                                <li>使用創建團購時的瀏覽器和裝置</li>
+                                <li>確認未清除瀏覽器數據</li>
+                            </ul>
+                        </div>
+                        <button
+                            onClick={() => navigate('/')}
+                            className="w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors mb-3"
+                        >
+                            返回首頁
+                        </button>
+                        <button
+                            onClick={() => navigate(`/member/${groupId}`)}
+                            className="w-full bg-gray-100 text-gray-600 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                        >
+                            改為團員身份加入
+                        </button>
+                    </div>
+                </div>
+            </>
+        );
+    }
+    
     // 處理載入和錯誤狀態
     if (infoLoading || ordersLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">載入中...</p>
+            <>
+                <UpdatePrompt />
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">載入中...</p>
+                    </div>
                 </div>
-            </div>
+            </>
         );
     }
     

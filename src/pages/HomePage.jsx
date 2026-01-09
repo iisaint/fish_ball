@@ -11,7 +11,16 @@ function HistoryCard({ groupId, type, onDelete }) {
   
   const handleClick = () => {
     if (type === 'leader') {
-      navigate(`/leader/${groupId}`);
+      // 檢查是否有 Token（從歷史進入時應該已有 Token）
+      const hasToken = localStorage.getItem(`leader_token_${groupId}`);
+      if (hasToken) {
+        navigate(`/leader/${groupId}`);
+      } else {
+        // Token 遺失，提示用戶
+        if (confirm('找不到此團購的訪問權限。\n這可能是因為清除了瀏覽器數據。\n\n是否改為團員身份加入？')) {
+          navigate(`/member/${groupId}`);
+        }
+      }
     } else {
       navigate(`/member/${groupId}`);
     }
@@ -114,12 +123,15 @@ function HomePage() {
     setIsCreating(true);
     try {
       // 建立空白團購（團主在下一頁填寫資訊）
-      const groupId = await createGroup({
+      const { groupId, leaderToken } = await createGroup({
         name: '',
         phone: '',
         location: '',
         date: new Date().toISOString().split('T')[0]
       });
+      
+      // 自動存儲 Token 到 localStorage（用於驗證團主身份）
+      localStorage.setItem(`leader_token_${groupId}`, leaderToken);
       
       // 儲存到歷史記錄
       const groups = JSON.parse(localStorage.getItem('leader_groups') || '[]');
