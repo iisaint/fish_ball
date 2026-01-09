@@ -4,7 +4,7 @@ import { ref, onValue, off } from 'firebase/database';
 import { db } from '../config/firebase';
 import { isFirebaseConfigured } from '../config/firebase';
 import { PRODUCTS } from '../utils/constants';
-import { adjustPrice, updateShippingStatus, updateVendorNotes, completeGroup, confirmOrder } from '../utils/firebase';
+import { adjustPrice, updateShippingStatus, updateVendorNotes, completeGroup, confirmOrder, cancelConfirmation } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -191,6 +191,18 @@ function VendorView() {
             alert('收單確認成功！訂單已成立');
         } catch (error) {
             alert('確認失敗：' + error.message);
+        }
+    };
+    
+    // 取消確認（開放修改）
+    const handleCancelConfirmation = async () => {
+        if (!confirm('確定要取消確認嗎？\n\n取消後：\n• 團員可以修改訂單\n• 訂單狀態將改回「已送單」\n• 團主需要重新送單')) return;
+        
+        try {
+            await cancelConfirmation(selectedGroupId);
+            alert('已取消確認！\n\n訂單狀態已改回「已送單」\n團員現在可以修改訂單了');
+        } catch (error) {
+            alert('操作失敗：' + error.message);
         }
     };
     
@@ -685,9 +697,25 @@ function VendorView() {
                             )}
                             
                             {groupData.info?.status !== 'completed' && groupData.info?.orderStatus === 'confirmed' && (
-                                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 mb-6 text-center print:hidden">
-                                    <h3 className="font-bold text-lg text-green-800 mb-2">✅ 訂單已確認成立</h3>
-                                    <p className="text-sm text-green-700">此訂單已確認收單，請準備出貨</p>
+                                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-5 mb-6 print:hidden">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-left">
+                                            <h3 className="font-bold text-lg text-green-800 mb-2">✅ 訂單已確認成立</h3>
+                                            <p className="text-sm text-green-700">此訂單已確認收單，請準備出貨</p>
+                                        </div>
+                                        <button
+                                            onClick={handleCancelConfirmation}
+                                            className="bg-white border-2 border-orange-400 text-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-50 transition-colors whitespace-nowrap"
+                                        >
+                                            🔓 取消確認
+                                        </button>
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-green-200">
+                                        <p className="text-xs text-green-600 text-left">
+                                            <i className="fa-solid fa-info-circle mr-1"></i>
+                                            取消確認後，團員可以修改訂單，訂單狀態將改回「已送單」
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                             

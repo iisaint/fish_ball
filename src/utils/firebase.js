@@ -165,6 +165,18 @@ export const confirmOrder = async (groupId) => {
 };
 
 /**
+ * 廠商取消確認（改回已送單狀態，開放修改）
+ * @param {string} groupId - 團購 ID
+ */
+export const cancelConfirmation = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'submitted',
+    confirmedAt: null // 清除確認時間
+  });
+};
+
+/**
  * 取消送單（退回草稿狀態）
  * @param {string} groupId - 團購 ID
  */
