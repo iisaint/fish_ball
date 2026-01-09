@@ -258,11 +258,13 @@ function LeaderView() {
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
         
-        const currentQty = order.items[productId] || 0;
+        // 確保 items 存在，如果不存在則初始化為空物件
+        const items = order.items || {};
+        const currentQty = items[productId] || 0;
         let newQty = currentQty + delta;
         if (newQty < 0) newQty = 0;
         
-        const newItems = { ...order.items, [productId]: newQty };
+        const newItems = { ...items, [productId]: newQty };
         
         // 重新計算總額
         let newTotal = 0;
