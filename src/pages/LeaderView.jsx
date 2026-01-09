@@ -436,6 +436,7 @@ function LeaderView() {
     
     const isClosed = groupInfo?.status === 'closed' || groupInfo?.status === 'completed';
     const orderStatus = groupInfo?.orderStatus || 'draft'; // draft, submitted, confirmed
+    const isLocked = orderStatus !== 'draft' || isClosed; // 送單後或已關閉則鎖定
     
     return (
         <>
@@ -510,6 +511,11 @@ function LeaderView() {
                         <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
                             <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span>
                             團主資料
+                            {isLocked && (
+                                <span className="ml-auto text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium">
+                                    🔒 已鎖定
+                                </span>
+                            )}
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
@@ -519,8 +525,9 @@ function LeaderView() {
                                     name="name"
                                     value={leaderInfo.name} 
                                     onChange={handleLeaderChange}
+                                    disabled={isLocked}
                                     placeholder="例如：陳小美"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div>
@@ -530,8 +537,9 @@ function LeaderView() {
                                     name="phone"
                                     value={leaderInfo.phone} 
                                     onChange={handleLeaderChange}
+                                    disabled={isLocked}
                                     placeholder="09xx-xxx-xxx"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div>
@@ -541,8 +549,9 @@ function LeaderView() {
                                     name="location"
                                     value={leaderInfo.location} 
                                     onChange={handleLeaderChange}
+                                    disabled={isLocked}
                                     placeholder="例如：社區大廳"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div>
@@ -552,7 +561,8 @@ function LeaderView() {
                                     name="date"
                                     value={leaderInfo.date} 
                                     onChange={handleLeaderChange}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    disabled={isLocked}
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                                 />
                             </div>
                         </div>
@@ -565,10 +575,16 @@ function LeaderView() {
                                 <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
                                 訂購明細
                                 <span className="ml-2 text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{orders.length} 人</span>
+                                {isLocked && (
+                                    <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-medium">
+                                        🔒 已鎖定
+                                    </span>
+                                )}
                             </h2>
                             <button 
                                 onClick={addMember}
-                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center"
+                                disabled={isLocked}
+                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <i className="fa-solid fa-plus mr-1"></i> 新增
                             </button>
@@ -591,7 +607,8 @@ function LeaderView() {
                                                     type="text"
                                                     value={order.memberName || ''}
                                                     onChange={(e) => updateMemberName(order.id, e.target.value)}
-                                                    className="font-bold text-lg bg-transparent border-b border-gray-300 focus:border-blue-500 w-full focus:outline-none"
+                                                    disabled={isLocked}
+                                                    className="font-bold text-lg bg-transparent border-b border-gray-300 focus:border-blue-500 w-full focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                                     placeholder="輸入姓名"
                                                 />
                                             </div>
@@ -599,8 +616,9 @@ function LeaderView() {
                                                 <div className="text-red-600 font-bold text-lg">${order.total || 0}</div>
                                             </div>
                                             <button 
-                                                onClick={() => removeMember(order.id)} 
-                                                className="w-8 h-8 rounded-full bg-white text-gray-400 border hover:text-red-500 hover:border-red-500 transition-all"
+                                                onClick={() => removeMember(order.id)}
+                                                disabled={isLocked} 
+                                                className="w-8 h-8 rounded-full bg-white text-gray-400 border hover:text-red-500 hover:border-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <i className="fa-solid fa-trash text-sm"></i>
                                             </button>
@@ -631,19 +649,21 @@ function LeaderView() {
                                                         
                                                         <div className="flex items-center gap-3">
                                                             <button 
-                                                                onClick={() => updateQuantity(order.id, p.id, -1)} 
-                                                                className={`w-10 h-10 rounded-full flex items-center justify-center ${qty > 0 ? 'bg-white border text-blue-600 shadow-sm' : 'bg-gray-100 text-gray-400'}`}
+                                                                onClick={() => updateQuantity(order.id, p.id, -1)}
+                                                                disabled={isLocked} 
+                                                                className={`w-10 h-10 rounded-full flex items-center justify-center ${isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : qty > 0 ? 'bg-white border text-blue-600 shadow-sm' : 'bg-gray-100 text-gray-400'}`}
                                                             >
                                                                 <i className="fa-solid fa-minus text-xs"></i>
                                                             </button>
                                                             
-                                                            <span className={`w-8 text-center font-bold text-lg ${isActive ? 'text-blue-600' : 'text-gray-300'}`}>
+                                                            <span className={`w-8 text-center font-bold text-lg ${isLocked ? 'text-gray-400' : isActive ? 'text-blue-600' : 'text-gray-300'}`}>
                                                                 {qty}
                                                             </span>
                                                             
                                                             <button 
-                                                                onClick={() => updateQuantity(order.id, p.id, 1)} 
-                                                                className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md hover:bg-blue-600"
+                                                                onClick={() => updateQuantity(order.id, p.id, 1)}
+                                                                disabled={isLocked} 
+                                                                className="w-10 h-10 rounded-full flex items-center justify-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 bg-blue-500 text-white hover:bg-blue-600"
                                                             >
                                                                 <i className="fa-solid fa-plus text-xs"></i>
                                                             </button>
