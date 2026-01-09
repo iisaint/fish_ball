@@ -1,16 +1,117 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createGroup } from '../utils/firebase';
 import { isFirebaseConfigured } from '../config/firebase';
+import { useGroupInfo } from '../hooks/useFirebaseGroup';
+
+// 歷史記錄卡片元件
+function HistoryCard({ groupId, type, onDelete }) {
+  const { groupInfo, loading } = useGroupInfo(groupId);
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (type === 'leader') {
+      // 檢查是否有 Token（從歷史進入時應該已有 Token）
+      const hasToken = localStorage.getItem(`leader_token_${groupId}`);
+      if (hasToken) {
+        navigate(`/leader/${groupId}`);
+      } else {
+        // Token 遺失，提示用戶
+        if (confirm('找不到此團購的訪問權限。\n這可能是因為清除了瀏覽器數據。\n\n是否改為團員身份加入？')) {
+          navigate(`/member/${groupId}`);
+        }
+      }
+    } else {
+      navigate(`/member/${groupId}`);
+    }
+  };
+  
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete(groupId);
+  };
+  
+  if (loading) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    );
+  }
+  
+  if (!groupInfo) {
+    return null; // 團購已被刪除
+  }
+  
+  return (
+    <div
+      onClick={handleClick}
+      className="border-2 border-gray-200 rounded-lg p-3 bg-white hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group relative"
+    >
+      <button
+        onClick={handleDelete}
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <i className="fa-solid fa-times text-xs"></i>
+      </button>
+      
+      <div className="flex items-start gap-2 mb-1">
+        <span className={`text-lg ${type === 'leader' ? 'text-orange-500' : 'text-blue-500'}`}>
+          {type === 'leader' ? '👨‍💼' : '👥'}
+        </span>
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-800">
+            {groupInfo.name || '未命名團購'}
+          </h3>
+          <div className="text-xs text-gray-500 space-y-0.5">
+            <p>📅 {groupInfo.date}</p>
+            <p className="font-mono">🔑 {groupId}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <span className={`text-xs font-medium ${
+          groupInfo.status === 'closed' 
+            ? 'text-red-600' 
+            : 'text-green-600'
+        }`}>
+          {groupInfo.status === 'closed' ? '已關閉' : '進行中'}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function HomePage() {
   const navigate = useNavigate();
   const [joinCode, setJoinCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showJoinInput, setShowJoinInput] = useState(false);
+  
+  // 讀取歷史記錄
+  const [leaderGroups, setLeaderGroups] = useState([]);
+  const [memberGroups, setMemberGroups] = useState([]);
 
   // 檢查 Firebase 是否已配置
   const firebaseReady = isFirebaseConfigured();
+  
+  // 載入歷史記錄
+  useEffect(() => {
+    const loadHistory = () => {
+      const leader = JSON.parse(localStorage.getItem('leader_groups') || '[]');
+      const member = JSON.parse(localStorage.getItem('member_groups') || '[]');
+      setLeaderGroups(leader);
+      setMemberGroups(member);
+    };
+    
+    loadHistory();
+    
+    // 監聽 storage 變化（跨分頁同步）
+    window.addEventListener('storage', loadHistory);
+    return () => window.removeEventListener('storage', loadHistory);
+  }, []);
 
   // 建立新團購
   const handleCreateGroup = async () => {
@@ -22,12 +123,22 @@ function HomePage() {
     setIsCreating(true);
     try {
       // 建立空白團購（團主在下一頁填寫資訊）
-      const groupId = await createGroup({
+      const { groupId, leaderToken } = await createGroup({
         name: '',
         phone: '',
         location: '',
         date: new Date().toISOString().split('T')[0]
       });
+      
+      // 自動存儲 Token 到 localStorage（用於驗證團主身份）
+      localStorage.setItem(`leader_token_${groupId}`, leaderToken);
+      
+      // 儲存到歷史記錄
+      const groups = JSON.parse(localStorage.getItem('leader_groups') || '[]');
+      if (!groups.includes(groupId)) {
+        groups.unshift(groupId);
+        localStorage.setItem('leader_groups', JSON.stringify(groups.slice(0, 10)));
+      }
       
       // 導向團主頁面
       navigate(`/leader/${groupId}`);
@@ -45,7 +156,16 @@ function HomePage() {
       alert('請輸入團購代碼');
       return;
     }
-    navigate(`/member/${joinCode.trim()}`);
+    
+    // 儲存到歷史記錄
+    const groups = JSON.parse(localStorage.getItem('member_groups') || '[]');
+    const code = joinCode.trim();
+    if (!groups.includes(code)) {
+      groups.unshift(code);
+      localStorage.setItem('member_groups', JSON.stringify(groups.slice(0, 10)));
+    }
+    
+    navigate(`/member/${code}`);
   };
 
   // 進入廠商頁面
@@ -59,6 +179,26 @@ function HomePage() {
       alert('密碼錯誤！');
     }
   };
+  
+  // 刪除歷史記錄
+  const deleteLeaderGroup = (groupId) => {
+    if (confirm('確定要從歷史記錄中移除嗎？')) {
+      const groups = leaderGroups.filter(id => id !== groupId);
+      localStorage.setItem('leader_groups', JSON.stringify(groups));
+      setLeaderGroups(groups);
+    }
+  };
+  
+  const deleteMemberGroup = (groupId) => {
+    if (confirm('確定要從歷史記錄中移除嗎？')) {
+      const groups = memberGroups.filter(id => id !== groupId);
+      localStorage.setItem('member_groups', JSON.stringify(groups));
+      setMemberGroups(groups);
+    }
+  };
+  
+  // 判斷是否有歷史記錄
+  const hasHistory = leaderGroups.length > 0 || memberGroups.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center p-4">
@@ -93,6 +233,62 @@ function HomePage() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 歷史記錄區塊 */}
+        {hasHistory && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+              <i className="fa-solid fa-history mr-2 text-purple-600"></i>
+              我的團購記錄
+            </h2>
+            
+            {/* 團主建立的團購 */}
+            {leaderGroups.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-600 mb-2 flex items-center">
+                  <span className="text-orange-500 mr-1">👨‍💼</span>
+                  我建立的團購
+                  <span className="ml-auto text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                    {leaderGroups.length}
+                  </span>
+                </h3>
+                <div className="grid gap-2">
+                  {leaderGroups.map(groupId => (
+                    <HistoryCard 
+                      key={groupId} 
+                      groupId={groupId} 
+                      type="leader"
+                      onDelete={deleteLeaderGroup}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 團員加入的團購 */}
+            {memberGroups.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-600 mb-2 flex items-center">
+                  <span className="text-blue-500 mr-1">👥</span>
+                  我加入的團購
+                  <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                    {memberGroups.length}
+                  </span>
+                </h3>
+                <div className="grid gap-2">
+                  {memberGroups.map(groupId => (
+                    <HistoryCard 
+                      key={groupId} 
+                      groupId={groupId} 
+                      type="member"
+                      onDelete={deleteMemberGroup}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

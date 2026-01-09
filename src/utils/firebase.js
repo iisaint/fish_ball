@@ -4,19 +4,23 @@ import { nanoid } from 'nanoid';
 import { PRODUCTS } from './constants';
 
 /**
- * 建立新團購
+ * 建立新團購（自動產生團主 Token）
  * @param {Object} leaderInfo - 團主資訊 { name, phone, location, date }
- * @returns {Promise<string>} groupId - 團購 ID
+ * @returns {Promise<{groupId: string, leaderToken: string}>} groupId 和 leaderToken
  */
 export const createGroup = async (leaderInfo) => {
   const groupId = nanoid(10); // 產生短網址 ID
+  const leaderToken = nanoid(32); // 產生 32 位隨機 Token
   const groupRef = ref(db, `groups/${groupId}`);
   
   await set(groupRef, {
     info: {
       ...leaderInfo,
+      leaderToken: leaderToken, // 存儲團主 Token
+      leaderNotes: '', // 團主給廠商的備註
       createdAt: Date.now(),
-      status: 'active'
+      status: 'active',
+      orderStatus: 'draft' // draft: 草稿, submitted: 已送單, confirmed: 已確認
     },
     orders: {},
     vendorNotes: {
@@ -26,7 +30,7 @@ export const createGroup = async (leaderInfo) => {
     }
   });
   
-  return groupId;
+  return { groupId, leaderToken };
 };
 
 /**
@@ -127,6 +131,16 @@ export const updateVendorNotes = async (groupId, notes) => {
 };
 
 /**
+ * 更新團主備註
+ * @param {string} groupId - 團購 ID
+ * @param {string} notes - 備註內容
+ */
+export const updateLeaderNotes = async (groupId, notes) => {
+  const notesRef = ref(db, `groups/${groupId}/info/leaderNotes`);
+  await set(notesRef, notes);
+};
+
+/**
  * 取得團購資訊
  * @param {string} groupId - 團購 ID
  * @returns {Promise<Object|null>} 團購資料
@@ -135,6 +149,55 @@ export const getGroup = async (groupId) => {
   const groupRef = ref(db, `groups/${groupId}`);
   const snapshot = await get(groupRef);
   return snapshot.exists() ? snapshot.val() : null;
+};
+
+/**
+ * 送單給廠商（團主功能）
+ * @param {string} groupId - 團購 ID
+ */
+export const submitToVendor = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'submitted',
+    submittedAt: Date.now()
+  });
+};
+
+/**
+ * 廠商確認收單
+ * @param {string} groupId - 團購 ID
+ */
+export const confirmOrder = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'confirmed',
+    confirmedAt: Date.now()
+  });
+};
+
+/**
+ * 廠商取消確認（改回已送單狀態，開放修改）
+ * @param {string} groupId - 團購 ID
+ */
+export const cancelConfirmation = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'submitted',
+    confirmedAt: null // 清除確認時間
+  });
+};
+
+/**
+ * 取消送單（退回草稿狀態）
+ * @param {string} groupId - 團購 ID
+ */
+export const cancelSubmission = async (groupId) => {
+  const infoRef = ref(db, `groups/${groupId}/info`);
+  await update(infoRef, { 
+    orderStatus: 'draft',
+    submittedAt: null,
+    confirmedAt: null
+  });
 };
 
 /**
@@ -149,5 +212,24 @@ export const getActualPrice = (productId, priceAdjustments = {}) => {
   }
   const product = PRODUCTS.find(p => p.id === productId);
   return product ? product.price : 0;
+};
+
+/**
+ * 驗證團主 Token
+ * @param {string} groupId - 團購 ID
+ * @param {string} token - 要驗證的 Token
+ * @returns {Promise<boolean>} 是否驗證通過
+ */
+export const verifyLeaderToken = async (groupId, token) => {
+  if (!groupId || !token) return false;
+  
+  try {
+    const tokenRef = ref(db, `groups/${groupId}/info/leaderToken`);
+    const snapshot = await get(tokenRef);
+    return snapshot.val() === token;
+  } catch (error) {
+    console.error('驗證 Token 失敗:', error);
+    return false;
+  }
 };
 
