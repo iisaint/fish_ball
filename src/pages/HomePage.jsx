@@ -303,18 +303,18 @@ function HomePage() {
             {isCreating ? '建立中...' : '🎯 我要建立團購（團主）'}
           </button>
 
-          {/* 分隔線 */}
-          <div className="relative py-2">
+          {/* 分隔線 - 已隱藏 */}
+          {/* <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white text-gray-500">或</span>
             </div>
-          </div>
+          </div> */}
 
-          {/* 加入團購 */}
-          {!showJoinInput ? (
+          {/* 加入團購 - 已隱藏 */}
+          {/* {!showJoinInput ? (
             <button
               onClick={() => setShowJoinInput(true)}
               className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 px-6 rounded-xl font-bold text-lg shadow-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200"
@@ -350,7 +350,7 @@ function HomePage() {
                 </button>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* 廠商入口 */}
           <button
