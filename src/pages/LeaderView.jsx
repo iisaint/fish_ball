@@ -107,6 +107,32 @@ function LeaderView() {
         }
     }, [groupId, infoError]);
     
+    // 當廠商調整價格時，自動重新計算所有訂單的總價
+    useEffect(() => {
+        if (!vendorNotes?.priceAdjustments || orders.length === 0) return;
+        
+        const recalculateAllOrders = async () => {
+            for (const order of orders) {
+                let newTotal = 0;
+                Object.entries(order.items || {}).forEach(([pId, qty]) => {
+                    const price = getActualPrice(parseInt(pId), vendorNotes.priceAdjustments);
+                    newTotal += price * qty;
+                });
+                
+                // 只有當總價有變化時才更新
+                if (newTotal !== order.total) {
+                    await saveOrder(groupId, order.id, {
+                        memberName: order.memberName,
+                        items: order.items || {},
+                        total: newTotal
+                    });
+                }
+            }
+        };
+        
+        recalculateAllOrders();
+    }, [vendorNotes?.priceAdjustments]);
+    
     // 將 Firebase 訂單物件轉換為陣列
     const orders = Object.entries(fbOrders || {}).map(([id, data]) => ({
         id,
@@ -309,6 +335,7 @@ function LeaderView() {
     const calculateGrandTotals = () => {
         const stats = {};
         let grandTotalMoney = 0;
+        let originalTotalMoney = 0; // 原始總價
         
         PRODUCTS.forEach(p => {
             stats[p.id] = 0;
@@ -317,16 +344,31 @@ function LeaderView() {
         orders.forEach(order => {
             grandTotalMoney += order.total || 0;
             Object.entries(order.items || {}).forEach(([pId, qty]) => {
-                if (stats[parseInt(pId)] !== undefined) {
-                    stats[parseInt(pId)] += qty;
+                const productId = parseInt(pId);
+                if (stats[productId] !== undefined) {
+                    stats[productId] += qty;
+                }
+                // 計算原始價格
+                const product = PRODUCTS.find(p => p.id === productId);
+                if (product) {
+                    originalTotalMoney += product.price * qty;
                 }
             });
         });
         
-        return { stats, grandTotalMoney };
+        const discount = originalTotalMoney - grandTotalMoney; // 折扣金額（正數表示折扣）
+        const hasDiscount = discount !== 0;
+        
+        return { 
+            stats, 
+            grandTotalMoney, 
+            originalTotalMoney,
+            discount,
+            hasDiscount
+        };
     };
     
-    const { stats, grandTotalMoney } = calculateGrandTotals();
+    const { stats, grandTotalMoney, originalTotalMoney, discount, hasDiscount } = calculateGrandTotals();
     
     // 生成圖片 Canvas
     const generateCanvas = async () => {
@@ -633,16 +675,23 @@ function LeaderView() {
                     {/* 2. 團員訂購區 */}
                     <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6 border border-blue-100">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
-                            <h2 className="text-lg font-bold text-gray-800 flex items-center">
-                                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
-                                訂購明細
-                                <span className="ml-2 text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{orders.length} 人</span>
-                                {isLocked && (
-                                    <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-medium">
-                                        🔒 已鎖定
-                                    </span>
-                                )}
-                            </h2>
+                            <div className="flex-1">
+                                <h2 className="text-lg font-bold text-gray-800 flex items-center flex-wrap gap-2">
+                                    <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                                    訂購明細
+                                    <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{orders.length} 人</span>
+                                    {isLocked && (
+                                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-medium">
+                                            🔒 已鎖定
+                                        </span>
+                                    )}
+                                    {hasDiscount && (
+                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                                            💰 廠商已調價
+                                        </span>
+                                    )}
+                                </h2>
+                            </div>
                             <button 
                                 onClick={addMember}
                                 disabled={isLocked}
@@ -663,6 +712,17 @@ function LeaderView() {
                                 {orders.map((order, index) => {
                                     const isCollapsed = collapsedOrders[order.id];
                                     const isLeaderAdded = order.memberName?.startsWith('團員');
+                                    
+                                    // 計算此訂單的原始價格與折扣
+                                    let orderOriginalPrice = 0;
+                                    Object.entries(order.items || {}).forEach(([pId, qty]) => {
+                                        const product = PRODUCTS.find(p => p.id === parseInt(pId));
+                                        if (product) {
+                                            orderOriginalPrice += product.price * qty;
+                                        }
+                                    });
+                                    const orderDiscount = orderOriginalPrice - (order.total || 0);
+                                    const orderHasDiscount = orderDiscount !== 0;
                                     
                                     return (
                                         <div 
@@ -708,7 +768,21 @@ function LeaderView() {
                                                     />
                                                 </div>
                                                 <div className="text-right mr-3">
-                                                    <div className="text-red-600 font-bold text-lg">${order.total || 0}</div>
+                                                    {orderHasDiscount ? (
+                                                        <div>
+                                                            <div className="text-xs text-gray-400 line-through">
+                                                                ${orderOriginalPrice}
+                                                            </div>
+                                                            <div className="text-red-600 font-bold text-lg">
+                                                                ${order.total || 0}
+                                                            </div>
+                                                            <div className={`text-xs font-bold ${orderDiscount > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                                {orderDiscount > 0 ? '↓' : '↑'} ${Math.abs(orderDiscount)}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-red-600 font-bold text-lg">${order.total || 0}</div>
+                                                    )}
                                                 </div>
                                                 <button 
                                                     onClick={() => removeMember(order.id)}
@@ -806,10 +880,54 @@ function LeaderView() {
                                 );
                             })}
                         </div>
-                        <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
-                            <div className="text-lg font-medium mb-1">全團總金額</div>
-                            <div className="text-4xl font-bold">${grandTotalMoney.toLocaleString()}</div>
-                        </div>
+                        
+                        {/* 價格明細 */}
+                        {hasDiscount ? (
+                            <div className="space-y-3">
+                                {/* 原始總價 */}
+                                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-white/80">原始總價</span>
+                                        <span className="font-mono text-lg line-through text-white/60">
+                                            ${originalTotalMoney.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-white/80">
+                                            {discount > 0 ? '折扣優惠' : '價格調整'}
+                                        </span>
+                                        <span className={`font-mono text-lg font-bold ${discount > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                            {discount > 0 ? '-' : '+'} ${Math.abs(discount).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {/* 應付金額 */}
+                                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 border-2 border-white/30">
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-lg font-medium">應付金額</div>
+                                        <div className="text-4xl font-bold">${grandTotalMoney.toLocaleString()}</div>
+                                    </div>
+                                    {discount > 0 && (
+                                        <div className="text-right text-sm text-green-200 mt-1">
+                                            已為您節省 ${discount.toLocaleString()} 元 🎉
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* 提示訊息 */}
+                                <div className="bg-yellow-500/20 border border-yellow-300/30 rounded-lg p-3 text-sm">
+                                    <i className="fa-solid fa-info-circle mr-2"></i>
+                                    廠商已調整價格，以上為實際應付金額
+                                </div>
+                            </div>
+                        ) : (
+                            /* 無折扣時的顯示 */
+                            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 text-center">
+                                <div className="text-lg font-medium mb-1">全團總金額</div>
+                                <div className="text-4xl font-bold">${grandTotalMoney.toLocaleString()}</div>
+                            </div>
+                        )}
                     </div>
                     
                     {/* 4. 操作按鈕 */}
