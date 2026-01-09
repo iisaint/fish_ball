@@ -14,9 +14,10 @@ function VendorView() {
     
     // State
     const [selectedGroupId, setSelectedGroupId] = useState(urlGroupId || null);
-    const [allGroups, setAllGroups] = useState([]);
-    const [completedGroups, setCompletedGroups] = useState([]);
-    const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
+    const [draftGroups, setDraftGroups] = useState([]); // 草稿狀態的團購
+    const [allGroups, setAllGroups] = useState([]); // 已送單/已確認的團購
+    const [completedGroups, setCompletedGroups] = useState([]); // 已完成的團購
+    const [activeTab, setActiveTab] = useState('draft'); // 'draft' or 'active' or 'history'
     const [groupData, setGroupData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [priceAdjustments, setPriceAdjustments] = useState({});
@@ -45,6 +46,13 @@ function VendorView() {
                     
                     console.log('🔍 所有團購資料:', groupsList);
                     
+                    // 分類：草稿狀態（尚未送單）
+                    const drafts = groupsList.filter(g => {
+                        const status = g.info?.status;
+                        const orderStatus = g.info?.orderStatus;
+                        return status !== 'completed' && orderStatus === 'draft';
+                    });
+                    
                     // 分類：進行中的訂單（已送單和已確認，且未完成）
                     const activeGroups = groupsList.filter(g => {
                         const status = g.info?.status;
@@ -65,9 +73,11 @@ function VendorView() {
                         return g.info?.status === 'completed';
                     });
                     
+                    console.log('📝 草稿團購:', drafts);
                     console.log('✅ 進行中的團購:', activeGroups);
                     console.log('📦 已完成的團購:', finishedGroups);
                     
+                    setDraftGroups(drafts.sort((a, b) => (b.info?.updatedAt || b.info?.createdAt || 0) - (a.info?.updatedAt || a.info?.createdAt || 0)));
                     setAllGroups(activeGroups.sort((a, b) => (b.info?.createdAt || 0) - (a.info?.createdAt || 0)));
                     setCompletedGroups(finishedGroups.sort((a, b) => (b.info?.completedAt || b.info?.createdAt || 0) - (a.info?.completedAt || a.info?.createdAt || 0)));
                 } else {
@@ -288,10 +298,28 @@ function VendorView() {
                     {!selectedGroupId && (
                         <div className="bg-white rounded-xl shadow-md p-6">
                             {/* 標籤切換 */}
-                            <div className="flex gap-2 mb-6 border-b border-gray-200">
+                            <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+                                <button
+                                    onClick={() => setActiveTab('draft')}
+                                    className={`px-6 py-3 font-bold transition-all whitespace-nowrap ${
+                                        activeTab === 'draft'
+                                            ? 'text-yellow-600 border-b-2 border-yellow-600'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-pencil mr-2"></i>
+                                    草稿預覽
+                                    <span className={`ml-2 text-sm font-normal px-2 py-0.5 rounded-full ${
+                                        activeTab === 'draft'
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                        {draftGroups.length}
+                                    </span>
+                                </button>
                                 <button
                                     onClick={() => setActiveTab('active')}
-                                    className={`px-6 py-3 font-bold transition-all ${
+                                    className={`px-6 py-3 font-bold transition-all whitespace-nowrap ${
                                         activeTab === 'active'
                                             ? 'text-purple-600 border-b-2 border-purple-600'
                                             : 'text-gray-500 hover:text-gray-700'
@@ -309,7 +337,7 @@ function VendorView() {
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('history')}
-                                    className={`px-6 py-3 font-bold transition-all ${
+                                    className={`px-6 py-3 font-bold transition-all whitespace-nowrap ${
                                         activeTab === 'history'
                                             ? 'text-green-600 border-b-2 border-green-600'
                                             : 'text-gray-500 hover:text-gray-700'
@@ -326,6 +354,109 @@ function VendorView() {
                                     </span>
                                 </button>
                             </div>
+                            
+                            {/* 草稿預覽列表 */}
+                            {activeTab === 'draft' && (
+                                <>
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <i className="fa-solid fa-pencil mr-2 text-yellow-600"></i>
+                                        編輯中的團購（草稿預覽）
+                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                            {draftGroups.length} 筆
+                                        </span>
+                                    </h2>
+                                    
+                                    {/* 提示說明 */}
+                                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                                        <div className="flex">
+                                            <i className="fa-solid fa-info-circle text-yellow-600 mt-1 mr-3"></i>
+                                            <div>
+                                                <p className="text-sm font-bold text-yellow-800 mb-1">💡 草稿預覽說明</p>
+                                                <ul className="text-xs text-yellow-700 space-y-1">
+                                                    <li>• 這些訂單為草稿狀態，團主尚未正式送單</li>
+                                                    <li>• 僅供提前了解訂單內容，無法進行價格調整或確認操作</li>
+                                                    <li>• 團主可能隨時修改或刪除草稿訂單</li>
+                                                    <li>• 團主送單後，訂單會自動移至「待處理訂單」標籤</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                            
+                                    {draftGroups.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <i className="fa-solid fa-file-pen text-6xl mb-4"></i>
+                                            <p className="text-lg">目前沒有編輯中的訂單</p>
+                                            <p className="text-sm mt-2">團主建立團購後，訂單會顯示在這裡</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                            {draftGroups.map(group => {
+                                                const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
+                                                const totalAmount = group.orders 
+                                                    ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                    : 0;
+                                                
+                                                return (
+                                                    <div 
+                                                        key={group.id}
+                                                        onClick={() => setSelectedGroupId(group.id)}
+                                                        className="border-2 border-yellow-200 rounded-xl p-4 hover:border-yellow-400 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-yellow-50 to-white"
+                                                    >
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <h3 className="font-bold text-lg text-gray-800">
+                                                                    {group.info?.name || '未命名團購'}
+                                                                </h3>
+                                                                <p className="text-xs text-gray-500">
+                                                                    代碼：{group.id}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
+                                                                    📝 編輯中
+                                                                </span>
+                                                                {group.info?.status === 'closed' && (
+                                                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                                                        已關閉
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-600">📅 結單日期：</span>
+                                                                <span className="font-medium">{group.info?.date}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-600">👥 訂購人數：</span>
+                                                                <span className="font-bold text-blue-600">{ordersCount} 人</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-600">💰 目前金額：</span>
+                                                                <span className="font-bold text-red-600">${totalAmount.toLocaleString()}</span>
+                                                            </div>
+                                                            {group.info?.leaderNotes && (
+                                                                <div className="pt-2 border-t border-yellow-200">
+                                                                    <p className="text-xs text-gray-600">
+                                                                        <i className="fa-solid fa-comment-dots mr-1"></i>
+                                                                        {group.info.leaderNotes.substring(0, 30)}{group.info.leaderNotes.length > 30 ? '...' : ''}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        <div className="mt-3 pt-3 border-t border-yellow-200 text-xs text-yellow-600 flex items-center">
+                                                            <i className="fa-solid fa-clock mr-1"></i>
+                                                            點擊查看詳情（唯讀模式）
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
+                            )}
                             
                             {/* 待處理訂單列表 */}
                             {activeTab === 'active' && (
@@ -509,6 +640,39 @@ function VendorView() {
                                 </div>
                             )}
                             
+                            {/* 草稿狀態提示 */}
+                            {groupData.info?.orderStatus === 'draft' && (
+                                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 mb-6 text-white print:hidden">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-shrink-0">
+                                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                                                <i className="fa-solid fa-pencil text-3xl"></i>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-2xl mb-2">📝 此訂單為草稿狀態（編輯中）</h3>
+                                            <div className="space-y-2 text-yellow-100 text-sm">
+                                                <p>• <strong>團主尚未正式送單</strong>，訂單內容可能隨時變更</p>
+                                                <p>• 此頁面為<strong>唯讀預覽模式</strong>，無法進行任何操作</p>
+                                                <p>• 團主送單後，訂單會自動移至「待處理訂單」標籤</p>
+                                                <p>• 建議：可提前了解訂單內容，但請勿依此備貨</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-yellow-400/30 flex items-center justify-between">
+                                        <div className="text-sm text-yellow-100">
+                                            <i className="fa-solid fa-clock mr-2"></i>
+                                            最後更新：{groupData.info?.updatedAt 
+                                                ? new Date(groupData.info.updatedAt).toLocaleString('zh-TW')
+                                                : new Date(groupData.info?.createdAt).toLocaleString('zh-TW')}
+                                        </div>
+                                        <div className="text-yellow-100 text-sm font-medium">
+                                            僅供預覽參考
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
                             {/* 團購資訊 */}
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
                                 <div className="flex justify-between items-start mb-4">
@@ -547,7 +711,7 @@ function VendorView() {
                             </div>
                             
                             {/* 出貨狀態 */}
-                            {groupData.info?.status !== 'completed' && (
+                            {groupData.info?.status !== 'completed' && groupData.info?.orderStatus !== 'draft' && (
                                 <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
                                     <h3 className="font-bold text-lg mb-3 text-gray-800">出貨狀態</h3>
                                     <div className="flex gap-2 flex-wrap">
@@ -587,7 +751,7 @@ function VendorView() {
                             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
                                 <h3 className="font-bold text-lg mb-4 text-gray-800">
                                     產品統計與價格
-                                    {groupData.info?.status === 'completed' && (
+                                    {(groupData.info?.status === 'completed' || groupData.info?.orderStatus === 'draft') && (
                                         <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
                                             唯讀
                                         </span>
@@ -602,7 +766,7 @@ function VendorView() {
                                                 <th className="px-4 py-3 text-center">調整價</th>
                                                 <th className="px-4 py-3 text-center">數量</th>
                                                 <th className="px-4 py-3 text-right">小計</th>
-                                                {groupData.info?.status !== 'completed' && (
+                                                {groupData.info?.status !== 'completed' && groupData.info?.orderStatus !== 'draft' && (
                                                     <th className="px-4 py-3 text-center print:hidden">操作</th>
                                                 )}
                                             </tr>
@@ -630,7 +794,7 @@ function VendorView() {
                                                         <td className="px-4 py-3 text-right font-bold">
                                                             ${stat.amount.toLocaleString()}
                                                         </td>
-                                                        {groupData.info?.status !== 'completed' && (
+                                                        {groupData.info?.status !== 'completed' && groupData.info?.orderStatus !== 'draft' && (
                                                             <td className="px-4 py-3 text-center print:hidden">
                                                                 <button
                                                                     onClick={() => handlePriceAdjust(p.id)}
@@ -733,32 +897,34 @@ function VendorView() {
                             )}
                             
                             {/* 備註 */}
-                            <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
-                                <h3 className="font-bold text-lg mb-3 text-gray-800">
-                                    廠商備註
-                                    {groupData.info?.status === 'completed' && (
-                                        <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                                            唯讀
-                                        </span>
-                                    )}
-                                </h3>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder={groupData.info?.status === 'completed' ? '無備註' : '輸入備註，例如：需要冷藏包裝、特殊處理事項等...'}
-                                    disabled={groupData.info?.status === 'completed'}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-                                    rows="4"
-                                />
-                                {groupData.info?.status !== 'completed' && (
-                                    <button
-                                        onClick={handleNotesUpdate}
-                                        className="mt-3 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors"
-                                    >
+                            {groupData.info?.orderStatus !== 'draft' && (
+                                <div className="bg-white rounded-xl shadow-md p-6 mb-6 print:hidden">
+                                    <h3 className="font-bold text-lg mb-3 text-gray-800">
+                                        廠商備註
+                                        {groupData.info?.status === 'completed' && (
+                                            <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                                                唯讀
+                                            </span>
+                                        )}
+                                    </h3>
+                                    <textarea
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder={groupData.info?.status === 'completed' ? '無備註' : '輸入備註，例如：需要冷藏包裝、特殊處理事項等...'}
+                                        disabled={groupData.info?.status === 'completed'}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                                        rows="4"
+                                    />
+                                    {groupData.info?.status !== 'completed' && (
+                                        <button
+                                            onClick={handleNotesUpdate}
+                                            className="mt-3 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition-colors"
+                                        >
                                         儲存備註
                                     </button>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                             
                             {/* 完成按鈕（只有已確認的訂單才能完成） */}
                             {groupData.info?.orderStatus === 'confirmed' && (
