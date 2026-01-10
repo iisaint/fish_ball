@@ -23,6 +23,7 @@ function VendorView() {
     const [priceAdjustments, setPriceAdjustments] = useState({});
     const [shippingStatus, setShippingStatus] = useState('pending');
     const [notes, setNotes] = useState('');
+    const [hideEmptyOrders, setHideEmptyOrders] = useState(true); // 過濾空訂單開關
     
     // 載入所有團購
     useEffect(() => {
@@ -358,13 +359,37 @@ function VendorView() {
                             {/* 草稿預覽列表 */}
                             {activeTab === 'draft' && (
                                 <>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                        <i className="fa-solid fa-pencil mr-2 text-yellow-600"></i>
-                                        編輯中的團購（草稿預覽）
-                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            {draftGroups.length} 筆
-                                        </span>
-                                    </h2>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <i className="fa-solid fa-pencil mr-2 text-yellow-600"></i>
+                                            編輯中的團購（草稿預覽）
+                                            <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                {draftGroups.filter(g => {
+                                                    if (!hideEmptyOrders) return true;
+                                                    const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                                    const totalAmount = g.orders 
+                                                        ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    return ordersCount > 0 && totalAmount > 0;
+                                                }).length} 筆
+                                            </span>
+                                        </h2>
+                                        
+                                        {/* 過濾開關 */}
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={hideEmptyOrders}
+                                                onChange={(e) => setHideEmptyOrders(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                                            <span className="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                                <i className="fa-solid fa-filter mr-1"></i>
+                                                隱藏空訂單
+                                            </span>
+                                        </label>
+                                    </div>
                                     
                                     {/* 提示說明 */}
                                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -382,21 +407,39 @@ function VendorView() {
                                         </div>
                                     </div>
                             
-                                    {draftGroups.length === 0 ? (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <i className="fa-solid fa-file-pen text-6xl mb-4"></i>
-                                            <p className="text-lg">目前沒有編輯中的訂單</p>
-                                            <p className="text-sm mt-2">團主建立團購後，訂單會顯示在這裡</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {draftGroups.map(group => {
-                                                const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
-                                                const totalAmount = group.orders 
-                                                    ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
-                                                    : 0;
-                                                
-                                                return (
+                                    {(() => {
+                                        const filteredGroups = draftGroups.filter(g => {
+                                            if (!hideEmptyOrders) return true;
+                                            const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                            const totalAmount = g.orders 
+                                                ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                : 0;
+                                            return ordersCount > 0 && totalAmount > 0;
+                                        });
+                                        
+                                        return filteredGroups.length === 0 ? (
+                                            <div className="text-center py-12 text-gray-400">
+                                                <i className="fa-solid fa-file-pen text-6xl mb-4"></i>
+                                                <p className="text-lg">
+                                                    {hideEmptyOrders 
+                                                        ? '目前沒有有效的訂單'
+                                                        : '目前沒有編輯中的訂單'}
+                                                </p>
+                                                <p className="text-sm mt-2">
+                                                    {hideEmptyOrders 
+                                                        ? '團主建立團購並新增團員後，訂單會顯示在這裡'
+                                                        : '團主建立團購後，訂單會顯示在這裡'}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {filteredGroups.map(group => {
+                                                    const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
+                                                    const totalAmount = group.orders 
+                                                        ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    
+                                                    return (
                                                     <div 
                                                         key={group.id}
                                                         onClick={() => setSelectedGroupId(group.id)}
@@ -452,32 +495,71 @@ function VendorView() {
                                                         </div>
                                                     </div>
                                                 );
-                                            })}
-                                        </div>
-                                    )}
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
                                 </>
                             )}
                             
                             {/* 待處理訂單列表 */}
                             {activeTab === 'active' && (
                                 <>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                        <i className="fa-solid fa-list mr-2 text-purple-600"></i>
-                                        待處理的團購訂單
-                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            {allGroups.length} 筆
-                                        </span>
-                                    </h2>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <i className="fa-solid fa-list mr-2 text-purple-600"></i>
+                                            待處理的團購訂單
+                                            <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                {allGroups.filter(g => {
+                                                    if (!hideEmptyOrders) return true;
+                                                    const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                                    const totalAmount = g.orders 
+                                                        ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    return ordersCount > 0 && totalAmount > 0;
+                                                }).length} 筆
+                                            </span>
+                                        </h2>
+                                        
+                                        {/* 過濾開關 */}
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={hideEmptyOrders}
+                                                onChange={(e) => setHideEmptyOrders(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                                            <span className="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                                <i className="fa-solid fa-filter mr-1"></i>
+                                                隱藏空訂單
+                                            </span>
+                                        </label>
+                                    </div>
                             
-                                    {allGroups.length === 0 ? (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <i className="fa-solid fa-inbox text-6xl mb-4"></i>
-                                            <p className="text-lg">目前沒有待處理的訂單</p>
-                                            <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {allGroups.map(group => {
+                                    {(() => {
+                                        const filteredGroups = allGroups.filter(g => {
+                                            if (!hideEmptyOrders) return true;
+                                            const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                            const totalAmount = g.orders 
+                                                ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                : 0;
+                                            return ordersCount > 0 && totalAmount > 0;
+                                        });
+                                        
+                                        return filteredGroups.length === 0 ? (
+                                            <div className="text-center py-12 text-gray-400">
+                                                <i className="fa-solid fa-inbox text-6xl mb-4"></i>
+                                                <p className="text-lg">
+                                                    {hideEmptyOrders 
+                                                        ? '目前沒有有效的訂單'
+                                                        : '目前沒有待處理的訂單'}
+                                                </p>
+                                                <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {filteredGroups.map(group => {
                                                 const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
                                                 const totalAmount = group.orders 
                                                     ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
@@ -530,9 +612,10 @@ function VendorView() {
                                                         </div>
                                                     </div>
                                                 );
-                                            })}
-                                        </div>
-                                    )}
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
                                 </>
                             )}
                             
