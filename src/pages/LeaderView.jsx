@@ -32,6 +32,7 @@ function LeaderView() {
     const [leaderNotes, setLeaderNotes] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [showShareLink, setShowShareLink] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
     
     // 折疊狀態管理（使用 localStorage 持久化）
     const [collapsedOrders, setCollapsedOrders] = useState(() => {
@@ -573,7 +574,27 @@ function LeaderView() {
                             )}
                         </div>
                     </header>
-                    
+
+                    {/* 操作說明 */}
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setShowHelp(!showHelp)}
+                            className="text-sm text-blue-500 hover:text-blue-700 flex items-center gap-1 mx-auto"
+                        >
+                            <i className={`fa-solid fa-circle-question`}></i>
+                            {showHelp ? '收起說明' : '操作說明'}
+                        </button>
+                        {showHelp && (
+                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-gray-700 space-y-1.5">
+                                <p>1. 填寫團購資訊（姓名、電話、地點、日期）</p>
+                                <p>2. 點擊「複製連結」分享給團員填單</p>
+                                <p>3. 等團員都填完後，點擊「送單給廠商」</p>
+                                <p>4. 送單後訂單會鎖定，需修改請先「取消送單」</p>
+                                <p>5. 可產生訂單圖片分享至 LINE</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* 分享團員連結 */}
                     <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg p-5 mb-6 text-white">
                         <div className="flex items-center justify-between">

@@ -28,6 +28,7 @@ function VendorView() {
     const [hideEmptyOrders, setHideEmptyOrders] = useState(true); // 過濾空訂單開關
     const [selectedGroupIds, setSelectedGroupIds] = useState([]); // 選中的團購ID列表
     const [showStatsModal, setShowStatsModal] = useState(false); // 統計視窗開關
+    const [showHelp, setShowHelp] = useState(false);
     
     // 切換團購選中狀態
     const toggleGroupSelection = (groupId) => {
@@ -376,7 +377,27 @@ function VendorView() {
                             產品管理
                         </button>
                     </header>
-                    
+
+                    {/* 操作說明 */}
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setShowHelp(!showHelp)}
+                            className="text-sm text-purple-500 hover:text-purple-700 flex items-center gap-1 mx-auto"
+                        >
+                            <i className={`fa-solid fa-circle-question`}></i>
+                            {showHelp ? '收起說明' : '操作說明'}
+                        </button>
+                        {showHelp && (
+                            <div className="mt-3 bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm text-gray-700 space-y-1.5">
+                                <p>1. 「草稿預覽」可提前查看團主正在編輯的訂單</p>
+                                <p>2. 「待處理」為團主已送單、等待確認的訂單</p>
+                                <p>3. 點擊訂單可查看詳情、調整價格、確認收單</p>
+                                <p>4. 可勾選多個訂單進行批量統計</p>
+                                <p>5. 確認後的訂單可在「歷史記錄」查看</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* 團購列表 */}
                     {!selectedGroupId && (
                         <div className="bg-white rounded-xl shadow-md p-6">

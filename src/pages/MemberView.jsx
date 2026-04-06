@@ -22,6 +22,7 @@ function MemberView() {
     const [myOrderId, setMyOrderId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
     
     // 將 Firebase 訂單物件轉換為陣列
     const orders = Object.entries(fbOrders || {}).map(([id, data]) => ({
@@ -224,7 +225,27 @@ function MemberView() {
                             </div>
                         )}
                     </header>
-                    
+
+                    {/* 操作說明 */}
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setShowHelp(!showHelp)}
+                            className="text-sm text-blue-500 hover:text-blue-700 flex items-center gap-1 mx-auto"
+                        >
+                            <i className={`fa-solid fa-circle-question`}></i>
+                            {showHelp ? '收起說明' : '操作說明'}
+                        </button>
+                        {showHelp && (
+                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-gray-700 space-y-1.5">
+                                <p>1. 輸入你的姓名</p>
+                                <p>2. 選擇想訂購的品項與數量</p>
+                                <p>3. 點擊「送出訂單」</p>
+                                <p>4. 送出後仍可修改，直到團主送單給廠商</p>
+                                <p>5. 可在下方查看其他團員的訂購內容</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* 成功提示 */}
                     {showSuccess && (
                         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
