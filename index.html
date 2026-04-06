@@ -24,7 +24,9 @@
       var _loadError = false;
 
       window.addEventListener('error', function(e) {
-        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        var src = (e.target && (e.target.src || e.target.href)) || '';
+        var isAppAsset = src.indexOf('/assets/') !== -1 || src.indexOf('/src/') !== -1;
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') && isAppAsset) {
           _loadError = true;
           showCacheFix();
         }
