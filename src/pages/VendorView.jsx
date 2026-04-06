@@ -23,6 +23,80 @@ function VendorView() {
     const [priceAdjustments, setPriceAdjustments] = useState({});
     const [shippingStatus, setShippingStatus] = useState('pending');
     const [notes, setNotes] = useState('');
+    const [hideEmptyOrders, setHideEmptyOrders] = useState(true); // 過濾空訂單開關
+    const [selectedGroupIds, setSelectedGroupIds] = useState([]); // 選中的團購ID列表
+    const [showStatsModal, setShowStatsModal] = useState(false); // 統計視窗開關
+    
+    // 切換團購選中狀態
+    const toggleGroupSelection = (groupId) => {
+        setSelectedGroupIds(prev => 
+            prev.includes(groupId) 
+                ? prev.filter(id => id !== groupId)
+                : [...prev, groupId]
+        );
+    };
+    
+    // 全選/取消全選
+    const toggleSelectAll = (groups) => {
+        if (selectedGroupIds.length === groups.length) {
+            setSelectedGroupIds([]);
+        } else {
+            setSelectedGroupIds(groups.map(g => g.id));
+        }
+    };
+    
+    // 計算批量統計數據（用於統計視窗）
+    const calculateBatchStats = () => {
+        const selectedGroups = [...draftGroups, ...allGroups, ...completedGroups]
+            .filter(g => selectedGroupIds.includes(g.id));
+        
+        const stats = {
+            totalAmount: 0,
+            productStats: {},
+            leaderStats: []
+        };
+        
+        // 初始化產品統計
+        PRODUCTS.forEach(p => {
+            stats.productStats[p.id] = { ...p, quantity: 0, amount: 0 };
+        });
+        
+        // 統計每個團購
+        selectedGroups.forEach(group => {
+            const orders = group.orders || {};
+            let groupTotal = 0;
+            let groupProductStats = {};
+            
+            PRODUCTS.forEach(p => {
+                groupProductStats[p.id] = 0;
+            });
+            
+            Object.values(orders).forEach(order => {
+                groupTotal += order.total || 0;
+                Object.entries(order.items || {}).forEach(([pId, qty]) => {
+                    const productId = parseInt(pId);
+                    if (stats.productStats[productId]) {
+                        stats.productStats[productId].quantity += qty;
+                        const price = getActualPrice(productId, group.vendorNotes?.priceAdjustments || {});
+                        stats.productStats[productId].amount += price * qty;
+                        groupProductStats[productId] += qty;
+                    }
+                });
+            });
+            
+            stats.totalAmount += groupTotal;
+            stats.leaderStats.push({
+                groupId: group.id,
+                name: group.info?.name || '未命名團購',
+                date: group.info?.date,
+                ordersCount: Object.keys(orders).length,
+                total: groupTotal,
+                productStats: groupProductStats
+            });
+        });
+        
+        return stats;
+    };
     
     // 載入所有團購
     useEffect(() => {
@@ -355,16 +429,65 @@ function VendorView() {
                                 </button>
                             </div>
                             
+                            {/* 批量操作工具欄 */}
+                            {selectedGroupIds.length > 0 && (
+                                <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 mb-6 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-blue-800 font-bold">
+                                            <i className="fa-solid fa-check-square mr-2"></i>
+                                            已選擇 {selectedGroupIds.length} 個團購
+                                        </span>
+                                        <button
+                                            onClick={() => setSelectedGroupIds([])}
+                                            className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                            取消全選
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowStatsModal(true)}
+                                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105"
+                                    >
+                                        <i className="fa-solid fa-chart-bar mr-2"></i>
+                                        統計匯總
+                                    </button>
+                                </div>
+                            )}
+                            
                             {/* 草稿預覽列表 */}
                             {activeTab === 'draft' && (
                                 <>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                        <i className="fa-solid fa-pencil mr-2 text-yellow-600"></i>
-                                        編輯中的團購（草稿預覽）
-                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            {draftGroups.length} 筆
-                                        </span>
-                                    </h2>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <i className="fa-solid fa-pencil mr-2 text-yellow-600"></i>
+                                            編輯中的團購（草稿預覽）
+                                            <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                {draftGroups.filter(g => {
+                                                    if (!hideEmptyOrders) return true;
+                                                    const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                                    const totalAmount = g.orders 
+                                                        ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    return ordersCount > 0 && totalAmount > 0;
+                                                }).length} 筆
+                                            </span>
+                                        </h2>
+                                        
+                                        {/* 過濾開關 */}
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={hideEmptyOrders}
+                                                onChange={(e) => setHideEmptyOrders(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                                            <span className="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                                <i className="fa-solid fa-filter mr-1"></i>
+                                                隱藏空訂單
+                                            </span>
+                                        </label>
+                                    </div>
                                     
                                     {/* 提示說明 */}
                                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -382,26 +505,69 @@ function VendorView() {
                                         </div>
                                     </div>
                             
-                                    {draftGroups.length === 0 ? (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <i className="fa-solid fa-file-pen text-6xl mb-4"></i>
-                                            <p className="text-lg">目前沒有編輯中的訂單</p>
-                                            <p className="text-sm mt-2">團主建立團購後，訂單會顯示在這裡</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {draftGroups.map(group => {
-                                                const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
-                                                const totalAmount = group.orders 
-                                                    ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
-                                                    : 0;
-                                                
-                                                return (
+                                    {(() => {
+                                        const filteredGroups = draftGroups.filter(g => {
+                                            if (!hideEmptyOrders) return true;
+                                            const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                            const totalAmount = g.orders 
+                                                ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                : 0;
+                                            return ordersCount > 0 && totalAmount > 0;
+                                        });
+                                        
+                                        return filteredGroups.length === 0 ? (
+                                            <div className="text-center py-12 text-gray-400">
+                                                <i className="fa-solid fa-file-pen text-6xl mb-4"></i>
+                                                <p className="text-lg">
+                                                    {hideEmptyOrders 
+                                                        ? '目前沒有有效的訂單'
+                                                        : '目前沒有編輯中的訂單'}
+                                                </p>
+                                                <p className="text-sm mt-2">
+                                                    {hideEmptyOrders 
+                                                        ? '團主建立團購並新增團員後，訂單會顯示在這裡'
+                                                        : '團主建立團購後，訂單會顯示在這裡'}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {filteredGroups.map(group => {
+                                                    const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
+                                                    const totalAmount = group.orders 
+                                                        ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    
+                                                    const isSelected = selectedGroupIds.includes(group.id);
+                                                    
+                                                    return (
                                                     <div 
                                                         key={group.id}
-                                                        onClick={() => setSelectedGroupId(group.id)}
-                                                        className="border-2 border-yellow-200 rounded-xl p-4 hover:border-yellow-400 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-yellow-50 to-white"
+                                                        className={`border-2 rounded-xl p-4 hover:shadow-lg transition-all relative ${
+                                                            isSelected 
+                                                                ? 'border-blue-400 bg-blue-50' 
+                                                                : 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-white hover:border-yellow-400'
+                                                        }`}
                                                     >
+                                                        {/* 勾選框 */}
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleGroupSelection(group.id);
+                                                            }}
+                                                            className="absolute top-3 left-3 z-10"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => {}}
+                                                                className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                            />
+                                                        </div>
+                                                        
+                                                        <div 
+                                                            onClick={() => setSelectedGroupId(group.id)}
+                                                            className="cursor-pointer pl-8"
+                                                        >
                                                         <div className="flex justify-between items-start mb-3">
                                                             <div>
                                                                 <h3 className="font-bold text-lg text-gray-800">
@@ -450,45 +616,109 @@ function VendorView() {
                                                             <i className="fa-solid fa-clock mr-1"></i>
                                                             點擊查看詳情（唯讀模式）
                                                         </div>
+                                                        </div>
                                                     </div>
                                                 );
-                                            })}
-                                        </div>
-                                    )}
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
                                 </>
                             )}
                             
                             {/* 待處理訂單列表 */}
                             {activeTab === 'active' && (
                                 <>
-                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                        <i className="fa-solid fa-list mr-2 text-purple-600"></i>
-                                        待處理的團購訂單
-                                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            {allGroups.length} 筆
-                                        </span>
-                                    </h2>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                                            <i className="fa-solid fa-list mr-2 text-purple-600"></i>
+                                            待處理的團購訂單
+                                            <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                {allGroups.filter(g => {
+                                                    if (!hideEmptyOrders) return true;
+                                                    const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                                    const totalAmount = g.orders 
+                                                        ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                        : 0;
+                                                    return ordersCount > 0 && totalAmount > 0;
+                                                }).length} 筆
+                                            </span>
+                                        </h2>
+                                        
+                                        {/* 過濾開關 */}
+                                        <label className="flex items-center cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={hideEmptyOrders}
+                                                onChange={(e) => setHideEmptyOrders(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                                            <span className="ml-3 text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                                <i className="fa-solid fa-filter mr-1"></i>
+                                                隱藏空訂單
+                                            </span>
+                                        </label>
+                                    </div>
                             
-                                    {allGroups.length === 0 ? (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <i className="fa-solid fa-inbox text-6xl mb-4"></i>
-                                            <p className="text-lg">目前沒有待處理的訂單</p>
-                                            <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                            {allGroups.map(group => {
+                                    {(() => {
+                                        const filteredGroups = allGroups.filter(g => {
+                                            if (!hideEmptyOrders) return true;
+                                            const ordersCount = g.orders ? Object.keys(g.orders).length : 0;
+                                            const totalAmount = g.orders 
+                                                ? Object.values(g.orders).reduce((sum, order) => sum + (order.total || 0), 0)
+                                                : 0;
+                                            return ordersCount > 0 && totalAmount > 0;
+                                        });
+                                        
+                                        return filteredGroups.length === 0 ? (
+                                            <div className="text-center py-12 text-gray-400">
+                                                <i className="fa-solid fa-inbox text-6xl mb-4"></i>
+                                                <p className="text-lg">
+                                                    {hideEmptyOrders 
+                                                        ? '目前沒有有效的訂單'
+                                                        : '目前沒有待處理的訂單'}
+                                                </p>
+                                                <p className="text-sm mt-2">團主送單後，訂單會顯示在這裡</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {filteredGroups.map(group => {
                                                 const ordersCount = group.orders ? Object.keys(group.orders).length : 0;
                                                 const totalAmount = group.orders 
                                                     ? Object.values(group.orders).reduce((sum, order) => sum + (order.total || 0), 0)
                                                     : 0;
+                                                const isSelected = selectedGroupIds.includes(group.id);
                                                 
                                                 return (
                                                     <div 
                                                         key={group.id}
-                                                        onClick={() => setSelectedGroupId(group.id)}
-                                                        className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer bg-white"
+                                                        className={`border-2 rounded-xl p-4 hover:shadow-lg transition-all relative ${
+                                                            isSelected 
+                                                                ? 'border-blue-400 bg-blue-50' 
+                                                                : 'border-gray-200 bg-white hover:border-purple-400'
+                                                        }`}
                                                     >
+                                                        {/* 勾選框 */}
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleGroupSelection(group.id);
+                                                            }}
+                                                            className="absolute top-3 left-3 z-10"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => {}}
+                                                                className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                            />
+                                                        </div>
+                                                        
+                                                        <div 
+                                                            onClick={() => setSelectedGroupId(group.id)}
+                                                            className="cursor-pointer pl-8"
+                                                        >
                                                         <div className="flex justify-between items-start mb-3">
                                                             <div>
                                                                 <h3 className="font-bold text-lg text-gray-800">
@@ -528,11 +758,13 @@ function VendorView() {
                                                                 ${totalAmount.toLocaleString()}
                                                             </div>
                                                         </div>
+                                                        </div>
                                                     </div>
                                                 );
-                                            })}
-                                        </div>
-                                    )}
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
                                 </>
                             )}
                             
@@ -942,6 +1174,175 @@ function VendorView() {
                     )}
                 </div>
             </div>
+            
+            {/* 統計視窗 */}
+            {showStatsModal && (() => {
+                const stats = calculateBatchStats();
+                
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowStatsModal(false)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {/* 標題列 */}
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-1">
+                                        <i className="fa-solid fa-chart-bar mr-2"></i>
+                                        團購統計匯總
+                                    </h2>
+                                    <p className="text-blue-100 text-sm">已選擇 {selectedGroupIds.length} 個團購</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowStatsModal(false)}
+                                    className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center"
+                                >
+                                    <i className="fa-solid fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            {/* 內容區 */}
+                            <div className="p-6 overflow-y-auto" style={{maxHeight: 'calc(90vh - 180px)'}}>
+                                {/* 總覽卡片 */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-green-600 text-sm font-medium mb-1">總金額</p>
+                                                <p className="text-4xl font-bold text-green-700">${stats.totalAmount.toLocaleString()}</p>
+                                            </div>
+                                            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+                                                <i className="fa-solid fa-dollar-sign text-white text-2xl"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-purple-600 text-sm font-medium mb-1">團購數量</p>
+                                                <p className="text-4xl font-bold text-purple-700">{stats.leaderStats.length} 個</p>
+                                            </div>
+                                            <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center">
+                                                <i className="fa-solid fa-users text-white text-2xl"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 產品統計 */}
+                                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <i className="fa-solid fa-box mr-2 text-blue-600"></i>
+                                        產品統計
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-blue-50">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left font-bold text-gray-700">產品名稱</th>
+                                                    <th className="px-4 py-3 text-center font-bold text-gray-700">數量</th>
+                                                    <th className="px-4 py-3 text-right font-bold text-gray-700">小計金額</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.values(stats.productStats)
+                                                    .filter(p => p.quantity > 0)
+                                                    .map(product => (
+                                                        <tr key={product.id} className="border-b hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-medium">{product.name}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">
+                                                                    {product.quantity} {product.unit}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-bold text-gray-700">
+                                                                ${product.amount.toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                <tr className="bg-green-50 font-bold">
+                                                    <td className="px-4 py-3">總計</td>
+                                                    <td className="px-4 py-3 text-center text-blue-700">
+                                                        {Object.values(stats.productStats).reduce((sum, p) => sum + p.quantity, 0)} 項
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-green-700 text-lg">
+                                                        ${stats.totalAmount.toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                {/* 各團主明細 */}
+                                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                        <i className="fa-solid fa-user-tie mr-2 text-purple-600"></i>
+                                        各團主明細
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {stats.leaderStats.map((leader, index) => (
+                                            <div key={leader.groupId} className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-all">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">
+                                                                #{index + 1}
+                                                            </span>
+                                                            <h4 className="font-bold text-lg text-gray-800">{leader.name}</h4>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">
+                                                            代碼：{leader.groupId} | 日期：{leader.date}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs text-gray-500 mb-1">總金額</p>
+                                                        <p className="text-2xl font-bold text-purple-600">${leader.total.toLocaleString()}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-3 border-t border-gray-200">
+                                                    {Object.entries(leader.productStats)
+                                                        .filter(([_, qty]) => qty > 0)
+                                                        .map(([productId, qty]) => {
+                                                            const product = PRODUCTS.find(p => p.id === parseInt(productId));
+                                                            return (
+                                                                <div key={productId} className="bg-gray-50 rounded-lg p-2">
+                                                                    <p className="text-xs text-gray-600">{product?.name}</p>
+                                                                    <p className="font-bold text-blue-600">{qty} {product?.unit}</p>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                                
+                                                <div className="mt-2 text-xs text-gray-500">
+                                                    訂購人數：{leader.ordersCount} 人
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* 底部按鈕 */}
+                            <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-end gap-3">
+                                <button
+                                    onClick={() => window.print()}
+                                    className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                    <i className="fa-solid fa-print mr-2"></i>
+                                    列印
+                                </button>
+                                <button
+                                    onClick={() => setShowStatsModal(false)}
+                                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                >
+                                    關閉
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </>
     );
 }
