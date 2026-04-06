@@ -361,11 +361,32 @@ function HomePage() {
           </button>
         </div>
 
-        {/* 功能說明 */}
-        <div className="mt-8 text-center text-sm text-gray-600 space-y-2">
-          <p>✨ 即時同步 · 多人協作</p>
-          <p>📱 支援手機 · PWA 可安裝</p>
-          <p>🔒 完全免費 · 資料安全</p>
+        {/* 角色說明 */}
+        <div className="mt-8 bg-white rounded-2xl shadow-xl p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4 text-center">如何使用？</h2>
+          <div className="space-y-4 text-sm text-gray-600">
+            <div className="flex gap-3">
+              <span className="text-2xl">👨‍💼</span>
+              <div>
+                <h3 className="font-bold text-gray-800">團主</h3>
+                <p>建立團購 → 分享連結給團員 → 等大家填單 → 送單給廠商</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-2xl">👥</span>
+              <div>
+                <h3 className="font-bold text-gray-800">團員</h3>
+                <p>透過團主分享的連結進入 → 輸入姓名 → 選擇品項數量 → 送出</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-2xl">🏪</span>
+              <div>
+                <h3 className="font-bold text-gray-800">廠商</h3>
+                <p>查看團購訂單 → 確認收單 → 調整價格 → 管理出貨狀態</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 版本資訊 */}
