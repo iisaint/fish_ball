@@ -1,7 +1,7 @@
 import { ref, set, update, push, remove, get } from 'firebase/database';
 import { db } from '../config/firebase';
 import { nanoid } from 'nanoid';
-import { PRODUCTS } from './constants';
+import { DEFAULT_PRODUCTS } from './constants';
 
 /**
  * 建立新團購（自動產生團主 Token）
@@ -206,12 +206,74 @@ export const cancelSubmission = async (groupId) => {
  * @param {Object} priceAdjustments - 價格調整物件
  * @returns {number} 實際價格
  */
-export const getActualPrice = (productId, priceAdjustments = {}) => {
+export const getActualPrice = (productId, priceAdjustments = {}, products = DEFAULT_PRODUCTS) => {
   if (priceAdjustments[productId]) {
     return priceAdjustments[productId];
   }
-  const product = PRODUCTS.find(p => p.id === productId);
+  const product = products.find(p => p.id === productId);
   return product ? product.price : 0;
+};
+
+// ========== 產品管理 ==========
+
+/**
+ * 取得所有產品
+ * @returns {Promise<Array>} 產品列表
+ */
+export const getProducts = async () => {
+  const productsRef = ref(db, 'products');
+  const snapshot = await get(productsRef);
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    return Object.entries(data).map(([key, val]) => ({ ...val, _key: key }));
+  }
+  return [];
+};
+
+/**
+ * 初始化產品資料（將預設產品寫入 Firebase）
+ * @param {Array} products - 產品列表
+ */
+export const initProducts = async (products) => {
+  const productsRef = ref(db, 'products');
+  const data = {};
+  products.forEach(p => {
+    data[p.id] = { id: p.id, name: p.name, price: p.price, unit: p.unit };
+  });
+  await set(productsRef, data);
+};
+
+/**
+ * 新增產品
+ * @param {Object} product - { name, price, unit }
+ * @returns {Promise<number>} 新產品 ID
+ */
+export const addProduct = async (product) => {
+  const products = await getProducts();
+  const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+  const newId = maxId + 1;
+  const productRef = ref(db, `products/${newId}`);
+  await set(productRef, { id: newId, name: product.name, price: product.price, unit: product.unit });
+  return newId;
+};
+
+/**
+ * 更新產品
+ * @param {number} productId - 產品 ID
+ * @param {Object} updates - 要更新的欄位
+ */
+export const updateProduct = async (productId, updates) => {
+  const productRef = ref(db, `products/${productId}`);
+  await update(productRef, updates);
+};
+
+/**
+ * 刪除產品
+ * @param {number} productId - 產品 ID
+ */
+export const deleteProduct = async (productId) => {
+  const productRef = ref(db, `products/${productId}`);
+  await remove(productRef);
 };
 
 /**

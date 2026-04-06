@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage.jsx'
 import LeaderView from './pages/LeaderView.jsx'
 import MemberView from './pages/MemberView.jsx'
 import VendorView from './pages/VendorView.jsx'
+import ProductManagement from './pages/ProductManagement.jsx'
 import './index.css'
 
 // vite-plugin-pwa 會自動處理 Service Worker 註冊
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
   {
     path: '/vendor/:groupId',
     element: <VendorView />,
+  },
+  {
+    path: '/products',
+    element: <ProductManagement />,
   },
 ]);
 
