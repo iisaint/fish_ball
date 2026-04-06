@@ -1,5 +1,5 @@
-// 產品資料
-export const PRODUCTS = [
+// 預設產品資料（Firebase 無資料時的 fallback）
+export const DEFAULT_PRODUCTS = [
     { id: 1, name: '牛蒡魚餅', price: 160, unit: '斤' },
     { id: 2, name: '花枝排', price: 180, unit: '斤' },
     { id: 3, name: '蝦丸', price: 220, unit: '斤' },

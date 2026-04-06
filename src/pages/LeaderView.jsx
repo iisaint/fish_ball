@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
-import { PRODUCTS } from '../utils/constants';
 import { useGroupInfo, useOrders, useVendorNotes } from '../hooks/useFirebaseGroup';
+import { useProducts } from '../hooks/useProducts';
 import { updateGroupInfo, saveOrder, deleteOrder, closeGroup, submitToVendor, cancelSubmission, verifyLeaderToken, updateLeaderNotes } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
@@ -20,7 +20,8 @@ function LeaderView() {
     const { groupInfo, loading: infoLoading, error: infoError } = useGroupInfo(groupId);
     const { orders: fbOrders, loading: ordersLoading } = useOrders(groupId);
     const { vendorNotes } = useVendorNotes(groupId);
-    
+    const { products: PRODUCTS } = useProducts();
+
     // Local state
     const [leaderInfo, setLeaderInfo] = useState({
         name: '',
@@ -115,7 +116,7 @@ function LeaderView() {
             for (const order of orders) {
                 let newTotal = 0;
                 Object.entries(order.items || {}).forEach(([pId, qty]) => {
-                    const price = getActualPrice(parseInt(pId), vendorNotes.priceAdjustments);
+                    const price = getActualPrice(parseInt(pId), vendorNotes.priceAdjustments, PRODUCTS);
                     newTotal += price * qty;
                 });
                 
@@ -320,7 +321,7 @@ function LeaderView() {
         // 重新計算總額
         let newTotal = 0;
         Object.entries(newItems).forEach(([pId, qty]) => {
-            const price = getActualPrice(parseInt(pId), vendorNotes?.priceAdjustments);
+            const price = getActualPrice(parseInt(pId), vendorNotes?.priceAdjustments, PRODUCTS);
             newTotal += price * qty;
         });
         
@@ -797,7 +798,7 @@ function LeaderView() {
                                                 <div className="space-y-3 mt-2">
                                             {PRODUCTS.map(p => {
                                                 const qty = order.items?.[p.id] || 0;
-                                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments);
+                                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments, PRODUCTS);
                                                 const isAdjusted = actualPrice !== p.price;
                                                 const isActive = qty > 0;
                                                 
@@ -859,7 +860,7 @@ function LeaderView() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                             {PRODUCTS.map(p => {
                                 const total = stats[p.id] || 0;
-                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments);
+                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments, PRODUCTS);
                                 const isAdjusted = actualPrice !== p.price;
                                 
                                 return (
@@ -1047,7 +1048,7 @@ function LeaderView() {
                                         <tr className="bg-blue-600 text-white">
                                             <th className="border border-blue-700 px-2 py-2 text-left">團員</th>
                                             {PRODUCTS.map(p => {
-                                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments);
+                                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments, PRODUCTS);
                                                 return (
                                                     <th key={p.id} className="border border-blue-700 px-2 py-2 text-center whitespace-nowrap">
                                                         <div className="font-bold">{p.name}</div>

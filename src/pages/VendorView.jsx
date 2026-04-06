@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ref, onValue, off } from 'firebase/database';
 import { db } from '../config/firebase';
 import { isFirebaseConfigured } from '../config/firebase';
-import { PRODUCTS } from '../utils/constants';
 import { adjustPrice, updateShippingStatus, updateVendorNotes, completeGroup, confirmOrder, cancelConfirmation } from '../utils/firebase';
+import { useProducts } from '../hooks/useProducts';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
 
@@ -12,6 +12,8 @@ function VendorView() {
     const { groupId: urlGroupId } = useParams();
     const navigate = useNavigate();
     
+    const { products: PRODUCTS } = useProducts();
+
     // State
     const [selectedGroupId, setSelectedGroupId] = useState(urlGroupId || null);
     const [draftGroups, setDraftGroups] = useState([]); // 草稿狀態的團購
@@ -77,7 +79,7 @@ function VendorView() {
                     const productId = parseInt(pId);
                     if (stats.productStats[productId]) {
                         stats.productStats[productId].quantity += qty;
-                        const price = getActualPrice(productId, group.vendorNotes?.priceAdjustments || {});
+                        const price = getActualPrice(productId, group.vendorNotes?.priceAdjustments || {}, PRODUCTS);
                         stats.productStats[productId].amount += price * qty;
                         groupProductStats[productId] += qty;
                     }
@@ -214,7 +216,7 @@ function VendorView() {
                 const id = parseInt(pId);
                 if (stats[id]) {
                     stats[id].quantity += qty;
-                    const price = getActualPrice(id, priceAdjustments);
+                    const price = getActualPrice(id, priceAdjustments, PRODUCTS);
                     stats[id].amount += price * qty;
                 }
             });
@@ -366,6 +368,13 @@ function VendorView() {
                         </div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-2">廠商管理後台</h1>
                         <p className="text-purple-600 font-medium">丸東魚丸</p>
+                        <button
+                            onClick={() => navigate('/products')}
+                            className="mt-3 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors"
+                        >
+                            <i className="fa-solid fa-box-open"></i>
+                            產品管理
+                        </button>
                     </header>
                     
                     {/* 團購列表 */}
@@ -1005,7 +1014,7 @@ function VendorView() {
                                         </thead>
                                         <tbody>
                                             {PRODUCTS.map(p => {
-                                                const actualPrice = getActualPrice(p.id, priceAdjustments);
+                                                const actualPrice = getActualPrice(p.id, priceAdjustments, PRODUCTS);
                                                 const isAdjusted = actualPrice !== p.price;
                                                 const stat = stats[p.id] || { quantity: 0, amount: 0 };
                                                 
@@ -1078,7 +1087,7 @@ function VendorView() {
                                                     .filter(([_, qty]) => qty > 0)
                                                     .map(([productId, qty]) => {
                                                         const product = PRODUCTS.find(p => p.id === parseInt(productId));
-                                                        const price = getActualPrice(parseInt(productId), priceAdjustments);
+                                                        const price = getActualPrice(parseInt(productId), priceAdjustments, PRODUCTS);
                                                         return product ? (
                                                             <span key={productId} className="inline-block bg-gray-100 px-2 py-1 rounded">
                                                                 {product.name} x{qty} (${price * qty})

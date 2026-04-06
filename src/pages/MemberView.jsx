@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PRODUCTS } from '../utils/constants';
 import { useGroupInfo, useOrders, useVendorNotes } from '../hooks/useFirebaseGroup';
+import { useProducts } from '../hooks/useProducts';
 import { saveOrder } from '../utils/firebase';
 import { getActualPrice } from '../utils/firebase';
 import UpdatePrompt from '../components/UpdatePrompt';
@@ -14,6 +14,7 @@ function MemberView() {
     const { groupInfo, loading: infoLoading, error: infoError } = useGroupInfo(groupId);
     const { orders: fbOrders, loading: ordersLoading } = useOrders(groupId);
     const { vendorNotes } = useVendorNotes(groupId);
+    const { products: PRODUCTS } = useProducts();
     
     // Local state
     const [memberName, setMemberName] = useState('');
@@ -54,7 +55,7 @@ function MemberView() {
     const calculateTotal = () => {
         let total = 0;
         Object.entries(items).forEach(([productId, qty]) => {
-            const price = getActualPrice(parseInt(productId), vendorNotes?.priceAdjustments);
+            const price = getActualPrice(parseInt(productId), vendorNotes?.priceAdjustments, PRODUCTS);
             total += price * qty;
         });
         return total;
@@ -265,7 +266,7 @@ function MemberView() {
                         <div className="space-y-4">
                             {PRODUCTS.map(p => {
                                 const qty = items[p.id] || 0;
-                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments);
+                                const actualPrice = getActualPrice(p.id, vendorNotes?.priceAdjustments, PRODUCTS);
                                 const isAdjusted = actualPrice !== p.price;
                                 const isActive = qty > 0;
                                 const othersQty = productStats[p.id] || 0;
